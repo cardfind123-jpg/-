@@ -9,15 +9,17 @@ const $$ = (s) => document.querySelectorAll(s);
 const COLORS = ['#ff4d6d', '#2ec5ff'];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+// איזה מסך שלט מתאים לכל משחק
+const VIEW = { menu: 'menu', race: 'race', box: 'box', hockey: 'hockey', tanks: 'stick', sumo: 'stick', tron: 'dpad', soccer: 'soccer', duel: 'duel', results: 'results' };
+const ACT_LABEL = { tanks: 'אש!', sumo: 'הדיפה' };
 
-let slot = -1, myName = '', mode = '', joined = false, lastCode = '';
+let slot = -1, myName = '', mode = '', joined = false, lastCode = '', autoTry = true;
 
-// ---------- מסך הצטרפות ----------
+// ---------- הצטרפות ----------
 const qs = new URLSearchParams(location.search);
 $('#code').value = (qs.get('c') || '').toUpperCase().slice(0, 4);
 $('#name').value = store.get('zira-name') || '';
 $('#code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4); });
-if ($('#code').value) setTimeout(() => $('#name').focus(), 50);
 
 function show(id) { $$('.view').forEach((v) => v.classList.toggle('on', v.id === id)); }
 
@@ -27,41 +29,53 @@ $('#joinBtn').addEventListener('click', async () => {
 });
 $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#joinBtn').click(); });
 
-function join(code, name) {
+function join(code, name, silent) {
   $('#err').textContent = '';
-  if (code.length !== 4) { $('#err').textContent = 'הקוד הוא 4 אותיות'; return; }
-  socket.emit('player:join', { code, name }, (r) => {
-    if (r.error) { $('#err').textContent = r.error; return; }
+  if (code.length !== 4) { if (!silent) $('#err').textContent = 'הקוד הוא 4 אותיות'; return; }
+  const token = store.get('zira-tok-' + code) || '';
+  socket.emit('player:join', { code, name, token }, (r) => {
+    if (r.error) { if (!silent) $('#err').textContent = r.error; return; }
     slot = r.slot; myName = r.name; joined = true; lastCode = code;
-    store.set('zira-name', name);
+    store.set('zira-name', name || r.name);
+    if (r.token) store.set('zira-tok-' + code, r.token);
     document.documentElement.style.setProperty('--me', COLORS[slot]);
     $$('.me').forEach((el) => (el.textContent = myName));
     keepAwake(); goFull();
     applyState(r.state || { mode: 'menu' });
   });
 }
-socket.on('connect', () => { if (joined && lastCode) join(lastCode, myName); });
+socket.on('connect', () => {
+  if (joined && lastCode) join(lastCode, myName, true);
+  else if (autoTry) {
+    // רענון הדף / חזרה מנעילת מסך – מצטרפים אוטומטית לאותו מקום
+    autoTry = false;
+    const code = $('#code').value.trim(), name = $('#name').value.trim();
+    if (code && name && store.get('zira-tok-' + code)) join(code, name, true);
+  }
+});
 socket.on('host:gone', () => { joined = false; show('gone'); });
 socket.on('state', applyState);
 socket.on('to', ({ ev, d }) => {
   if (ev === 'vibe') vibe(d);
   if (ev === 'meter') setMeter(d);
+  if (ev === 'boost') setBoost(d);
 });
 
 function applyState(s) {
   if (!s) return;
   const prev = mode; mode = s.mode;
-  releaseAll();
-  if (mode === 'menu') show('menu');
-  else if (mode === 'race') { show('race'); if (prev !== 'race') cal = null; }
-  else if (mode === 'box') { show('box'); setMeter({ v: 0, sta: 100 }); }
-  else if (mode === 'hockey') show('hockey');
-  else if (mode === 'results') {
-    show('results');
-    const w = s.w;
-    $('#resEmoji').textContent = w === slot ? '🏆' : w < 0 ? '🤝' : '😤';
-    $('#resTitle').textContent = w === slot ? 'ניצחת!' : w < 0 ? 'תיקו!' : 'הפעם לא…';
-    $('#resSub').textContent = w === slot ? 'כל הכבוד, אלוף/ה' : w < 0 ? 'שוב, ותכריעו' : 'בואו נעשה עוד סיבוב';
+  releaseAll(); resetStick();
+  show(VIEW[mode] || 'menu');
+  if (mode === 'race' && prev !== 'race') { cal = null; setBoost({ v: 0.6 }); }
+  if (mode === 'box') setMeter({ v: 0, sta: 100 });
+  if (ACT_LABEL[mode]) $('#actBtn').textContent = ACT_LABEL[mode];
+  if (mode === 'results') {
+    const t = s.tour, fin = s.final, w = fin ? s.champ : s.w, won = w === slot;
+    $('#resEmoji').textContent = won ? '🏆' : w < 0 ? '🤝' : '😤';
+    $('#resTitle').textContent = fin ? (won ? 'אלוף/ת הטורניר!' : w < 0 ? 'תיקו בטורניר!' : 'הטורניר נגמר') : won ? 'ניצחת!' : w < 0 ? 'תיקו!' : 'הפעם לא…';
+    $('#resSub').textContent = t ? `טורניר: ${t.pts[slot]} : ${t.pts[1 - slot]} · משחק ${t.k} מתוך ${t.n}` : won ? 'כל הכבוד, אלוף/ה' : 'בואו נעשה עוד סיבוב';
+    $('#again').style.display = t ? 'none' : '';
+    $('#toMenu').textContent = t && !fin ? `למשחק הבא: ${s.next}` : 'לתפריט המשחקים';
   }
 }
 
@@ -70,7 +84,9 @@ const send = (d) => joined && socket.emit('input', d);
 function vibe(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
 let wakeLock = null;
 async function keepAwake() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); } } catch (e) {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && joined) keepAwake(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { if (joined) keepAwake(); if (!socket.connected) socket.connect(); }
+});
 function goFull() { try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen && /Android/i.test(navigator.userAgent)) el.requestFullscreen().catch(() => {}); } catch (e) {} }
 
 const releasers = [];
@@ -80,22 +96,19 @@ function hold(el, cb) {
   const off = (e) => { if (active === null || (e && e.pointerId !== active)) return; active = null; el.classList.remove('on'); cb(false); };
   el.addEventListener('pointerdown', on);
   el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
-  el.addEventListener('contextmenu', (e) => e.preventDefault());
   releasers.push(() => { if (active !== null) { active = null; el.classList.remove('on'); cb(false); } });
 }
 function tap(el, cb) {
   el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 110); vibe(12); cb(); });
-  el.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 function releaseAll() { releasers.forEach((r) => r()); }
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
-// תפריט
-$$('.game').forEach((b) => b.addEventListener('click', () => { vibe(15); send({ t: 'menu', g: b.dataset.g }); }));
+// תפריט ותוצאות
+$$('.game, .tourBtn').forEach((b) => b.addEventListener('click', () => { vibe(15); send({ t: 'menu', g: b.dataset.g }); }));
 $('#again').addEventListener('click', () => send({ t: 'again' }));
 $('#toMenu').addEventListener('click', () => send({ t: 'next' }));
-// יציאה – לחיצה כפולה
 $$('.quit').forEach((q) => {
   let armed = 0;
   q.addEventListener('click', () => {
@@ -143,6 +156,7 @@ hold($('#gas'), (v) => (gas = v));
 hold($('#brake'), (v) => (brake = v));
 hold($('#left'), (v) => (bl = v));
 hold($('#right'), (v) => (br = v));
+tap($('#boost'), () => send({ t: 'boost' }));
 $('#cal').addEventListener('click', () => { cal = motionOK ? rawAngle() : null; vibe(30); flash($('#cal'), 'כויל ✓'); });
 $('#flip').addEventListener('click', () => { flip = -flip; store.set('zira-flip', String(flip)); vibe(30); flash($('#flip'), 'הופך ✓'); });
 $('#smode').addEventListener('click', () => setBtnMode(!btnMode));
@@ -151,8 +165,8 @@ function setBtnMode(v) {
   $('#smode').textContent = v ? 'הטיה' : 'כפתורים';
   $('#rhint').textContent = v ? 'היגוי עם החצים · גז ובלם בצדדים' : 'החזיקו לרוחב וסובבו כמו הגה';
 }
+function setBoost({ v = 0 } = {}) { $('#boostFill').style.width = clamp(v, 0, 1) * 100 + '%'; $('#boost').classList.toggle('ready', v >= 1); }
 function flash(el, s) { const o = el.textContent; el.textContent = s; setTimeout(() => (el.textContent = o), 900); }
-// אם אין חיישן אחרי שנייה – עוברים לכפתורים
 setInterval(() => { if (mode === 'race' && !motionOK && !btnMode) setBtnMode(true); }, 1500);
 
 // ---------- אגרוף ----------
@@ -193,6 +207,52 @@ pad.addEventListener('pointermove', (e) => { if (e.pointerId === padId) padMove(
 const padUp = (e) => { if (e.pointerId !== padId) return; padId = null; hdown = false; pad.classList.remove('touch'); };
 pad.addEventListener('pointerup', padUp); pad.addEventListener('pointercancel', padUp);
 
+// ---------- ג׳ויסטיק (טנקים, סומו) ----------
+const sZone = $('#stickZone'), sBase = $('#sBase'), sKnob = $('#sKnob');
+let sId = null, sOx = 0, sOy = 0, jx = 0, jy = 0;
+function resetStick() { sId = null; jx = jy = 0; sBase.style.left = sKnob.style.left = '50%'; sBase.style.top = sKnob.style.top = '50%'; sKnob.style.transform = ''; }
+sZone.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); sId = e.pointerId; try { sZone.setPointerCapture(e.pointerId); } catch (_) {}
+  const r = sZone.getBoundingClientRect(); sOx = e.clientX; sOy = e.clientY;
+  const lx = e.clientX - r.left + 'px', ly = e.clientY - r.top + 'px';
+  sBase.style.left = sKnob.style.left = lx; sBase.style.top = sKnob.style.top = ly; sKnob.style.transform = ''; jx = jy = 0;
+});
+sZone.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== sId) return;
+  let dx = e.clientX - sOx, dy = e.clientY - sOy; const R = 64, m = Math.hypot(dx, dy);
+  if (m > R) { dx *= R / m; dy *= R / m; }
+  jx = dx / R; jy = dy / R; sKnob.style.transform = `translate(${dx}px,${dy}px)`;
+});
+const sUp = (e) => { if (e.pointerId !== sId) return; resetStick(); };
+sZone.addEventListener('pointerup', sUp); sZone.addEventListener('pointercancel', sUp);
+tap($('#actBtn'), () => send({ t: 'act' }));
+
+// ---------- חצים (אופנועי אור) ----------
+$$('#dpadZone [data-d]').forEach((b) => tap(b, () => send({ t: 'dir', d: b.dataset.d })));
+{ // החלקה בכל האזור
+  const z = $('#dpadZone'); let id = null, ox = 0, oy = 0;
+  z.addEventListener('pointerdown', (e) => { id = e.pointerId; ox = e.clientX; oy = e.clientY; });
+  z.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== id) return;
+    const dx = e.clientX - ox, dy = e.clientY - oy;
+    if (Math.hypot(dx, dy) < 34) return;
+    send({ t: 'dir', d: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : dy > 0 ? 'd' : 'u' }); vibe(10);
+    ox = e.clientX; oy = e.clientY;
+  });
+  const up = (e) => { if (e.pointerId === id) id = null; };
+  z.addEventListener('pointerup', up); z.addEventListener('pointercancel', up);
+}
+
+// ---------- כדורגל ----------
+let sl = false, sr = false;
+hold($('#sL'), (v) => (sl = v));
+hold($('#sR'), (v) => (sr = v));
+tap($('#sJump'), () => send({ t: 'jump' }));
+tap($('#sKick'), () => send({ t: 'kick' }));
+
+// ---------- דו־קרב ----------
+tap($('#duelBtn'), () => send({ t: 'act' }));
+
 // ---------- לולאת שליחה ----------
 let lastSent = '';
 setInterval(() => {
@@ -200,13 +260,14 @@ setInterval(() => {
   let d = null;
   if (mode === 'race') d = { steer: +steerNow().toFixed(3), gas, brake };
   else if (mode === 'hockey') d = { x: +hx.toFixed(4), y: +hy.toFixed(4), down: hdown };
+  else if (mode === 'tanks' || mode === 'sumo') d = { jx: +jx.toFixed(3), jy: +jy.toFixed(3) };
+  else if (mode === 'soccer') d = { l: sl, r: sr };
   if (!d) return;
   const k = JSON.stringify(d);
-  if (k === lastSent && Math.random() < 0.8) return; // חוסך תעבורה כשאין שינוי
+  if (k === lastSent && Math.random() < 0.8) return;
   lastSent = k; socket.volatile.emit('axis', d);
 }, 25);
 
-// הגה מסתובב על המסך
 (function wheelLoop() {
   if (mode === 'race' && !btnMode) $('#wheel').style.transform = `rotate(${steerNow() * 100}deg)`;
   requestAnimationFrame(wheelLoop);

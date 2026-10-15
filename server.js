@@ -5,6 +5,7 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -47,14 +48,29 @@ io.on('connection', (sock) => {
     const code = String((msg && msg.code) || '').toUpperCase().trim();
     const r = rooms.get(code);
     if (!r) return ack({ error: 'לא נמצא חדר עם הקוד הזה' });
-    const slot = r.players.findIndex((p) => !p);
+    const tok = String((msg && msg.token) || '').slice(0, 40);
+    // חזרה של שחקן שהתנתק (מסך ננעל, רשת קפצה) – מקבל את אותו מקום
+    let slot = tok ? r.players.findIndex((p) => p && p.token === tok) : -1;
+    if (slot >= 0) {
+      const p = r.players[slot];
+      clearTimeout(p.timer); p.timer = null; p.offline = false;
+      const old = p.id !== sock.id && io.sockets.sockets.get(p.id);
+      if (old) old.data = {};
+      p.id = sock.id;
+      sock.join(code);
+      sock.data = { role: 'player', code, slot };
+      io.to(r.host).emit('player:joined', { slot, name: p.name, back: true });
+      return ack({ slot, name: p.name, state: r.state, token: p.token });
+    }
+    slot = r.players.findIndex((p) => !p);
     if (slot < 0) return ack({ error: 'החדר מלא (2 שחקנים)' });
     const name = String((msg && msg.name) || '').trim().slice(0, 12) || `שחקן ${slot + 1}`;
-    r.players[slot] = { id: sock.id, name };
+    const token = crypto.randomUUID();
+    r.players[slot] = { id: sock.id, name, token, offline: false, timer: null };
     sock.join(code);
     sock.data = { role: 'player', code, slot };
     io.to(r.host).emit('player:joined', { slot, name });
-    ack({ slot, name, state: r.state });
+    ack({ slot, name, state: r.state, token });
   });
 
   // קלט רציף (הגה, מיקום אצבע) – volatile: אם חבילה אבדה, הבאה תגיע
@@ -98,8 +114,12 @@ io.on('connection', (sock) => {
       sock.to(code).emit('host:gone');
       rooms.delete(code);
     } else if (role === 'player' && r.players[slot] && r.players[slot].id === sock.id) {
-      r.players[slot] = null;
-      io.to(r.host).emit('player:left', { slot });
+      const p = r.players[slot];
+      p.offline = true;
+      io.to(r.host).emit('player:away', { slot });
+      p.timer = setTimeout(() => {
+        if (r.players[slot] === p && p.offline) { r.players[slot] = null; io.to(r.host).emit('player:left', { slot }); }
+      }, 30000);
     }
   });
 });
