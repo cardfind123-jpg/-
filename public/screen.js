@@ -199,9 +199,9 @@ const GAMES = [
   { id: 'hockey', name: 'הוקי אוויר', desc: 'גררו את האצבע ותבקיעו', col: '#2ec5ff' },
   { id: 'soccer', name: 'כדורגל ראשים', desc: 'קפיצות, נגיחות ובעיטות', col: '#6bff8a' },
   { id: 'tanks', name: 'טנקים', desc: 'פגזים שקופצים מהקירות', col: '#a3e635' },
-  { id: 'tron', name: 'אופנועי אור', desc: 'אל תתנגשו בשובל', col: '#c084fc' },
+  { id: 'volley', name: 'כדורעף', desc: 'קפיצות והנחתות מעל הרשת', col: '#facc15' },
   { id: 'sumo', name: 'סומו', desc: 'דחפו את היריב מהזירה', col: '#fb923c' },
-  { id: 'duel', name: 'דו־קרב', desc: 'מי שולף ראשון?', col: '#f87171' },
+  { id: 'bomb', name: 'פצצה חמה', desc: 'תעבירו לפני שהיא מתפוצצת', col: '#f87171' },
 ];
 const gameName = (id) => (GAMES.find((g) => g.id === id) || {}).name || '';
 function cardRect(i) {
@@ -210,7 +210,7 @@ function cardRect(i) {
 }
 const TOUR_RECT = { x: 60, y: 768, w: 982, h: 66 };
 function startGame(id) {
-  const map = { race: Race, box: Box, hockey: Hockey, soccer: Soccer, tanks: Tanks, tron: Tron, sumo: Sumo, duel: Duel };
+  const map = { race: Race, box: Box, hockey: Hockey, soccer: Soccer, tanks: Tanks, volley: Volley, sumo: Sumo, bomb: Bomb };
   if (id === 'tour') return startTour();
   if (map[id]) setScene(id, map[id]);
 }
@@ -252,20 +252,23 @@ function drawIcon(id, cx, cy, k = 1) {
     rr(-34, -24, 68, 48, 10); ctx.fillStyle = '#a3e635'; ctx.fill();
     rr(8, -7, 52, 14, 4); ctx.fillStyle = '#4d7c0f'; ctx.fill();
     ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
-  } else if (id === 'tron') {
-    ctx.lineCap = 'square'; ctx.lineJoin = 'miter'; ctx.lineWidth = 9;
-    ctx.strokeStyle = '#c084fc'; ctx.beginPath(); ctx.moveTo(-52, 34); ctx.lineTo(-14, 34); ctx.lineTo(-14, -18); ctx.lineTo(30, -18); ctx.stroke();
-    ctx.strokeStyle = '#2ec5ff'; ctx.beginPath(); ctx.moveTo(52, 40); ctx.lineTo(18, 40); ctx.lineTo(18, 14); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.fillRect(28, -24, 12, 12); ctx.fillRect(12, 8, 12, 12);
+  } else if (id === 'volley') {
+    ctx.beginPath(); ctx.arc(0, 0, 42, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.ellipse(-22, 0, 22, 48, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.ellipse(26, -10, 18, 44, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); ctx.lineWidth = 3; ctx.strokeStyle = '#1b1f3b'; ctx.beginPath(); ctx.arc(0, 0, 42, 0, Math.PI * 2); ctx.stroke();
   } else if (id === 'sumo') {
     ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.fillStyle = '#ead7a8'; ctx.fill();
     ctx.lineWidth = 7; ctx.strokeStyle = '#bfa064'; ctx.stroke();
     ctx.beginPath(); ctx.arc(-16, 4, 17, 0, Math.PI * 2); ctx.fillStyle = PC[0]; ctx.fill();
     ctx.beginPath(); ctx.arc(17, -4, 17, 0, Math.PI * 2); ctx.fillStyle = PC[1]; ctx.fill();
-  } else if (id === 'duel') {
-    ctx.fillStyle = GOLD; star(0, 0, 44, 20, 6); ctx.fill();
-    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fillStyle = '#b45309'; ctx.fill();
-    for (let j = 0; j < 6; j++) { const a = -Math.PI / 2 + j * Math.PI / 3; ctx.beginPath(); ctx.arc(Math.cos(a) * 44, Math.sin(a) * 44, 6, 0, Math.PI * 2); ctx.fillStyle = GOLD; ctx.fill(); }
+  } else if (id === 'bomb') {
+    ctx.beginPath(); ctx.arc(0, 8, 38, 0, Math.PI * 2); ctx.fillStyle = '#1b1b24'; ctx.fill();
+    ctx.beginPath(); ctx.arc(-12, -4, 10, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fill();
+    ctx.fillStyle = '#555'; ctx.fillRect(-9, -38, 18, 12);
+    ctx.strokeStyle = '#c9a46b'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, -38); ctx.quadraticCurveTo(14, -52, 24, -48); ctx.stroke();
+    ctx.fillStyle = GOLD; star(26, -48, 14, 5, 6); ctx.fill();
   }
   ctx.restore();
 }
@@ -1217,121 +1220,6 @@ function drawTank(me) {
 }
 
 // ============================================================
-//  משחק 5: אופנועי אור
-// ============================================================
-const TR = { cell: 12, cols: 118, rows: 60, x0: 92, y0: 136, win: 3 };
-let trailCv = null, trailCtx = null, gridCv = null;
-function trInit() {
-  if (trailCv) return;
-  const W = TR.cols * TR.cell, H = TR.rows * TR.cell;
-  trailCv = document.createElement('canvas'); trailCv.width = W * 2; trailCv.height = H * 2;
-  trailCtx = trailCv.getContext('2d'); trailCtx.scale(2, 2);
-  gridCv = document.createElement('canvas'); gridCv.width = W * 2; gridCv.height = H * 2;
-  const g = gridCv.getContext('2d'); g.scale(2, 2);
-  g.fillStyle = '#070816'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(120,140,255,.09)'; g.lineWidth = 1;
-  for (let x = 0; x <= TR.cols; x += 4) { g.beginPath(); g.moveTo(x * TR.cell, 0); g.lineTo(x * TR.cell, H); g.stroke(); }
-  for (let y = 0; y <= TR.rows; y += 4) { g.beginPath(); g.moveTo(0, y * TR.cell); g.lineTo(W, y * TR.cell); g.stroke(); }
-}
-const DIRS = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
-const Tron = {
-  enter() { trInit(); this.score = [0, 0]; this.round = 1; this.reset(); this.state = 'intro'; this.it = 2.8; },
-  reset() {
-    this.grid = new Uint8Array(TR.cols * TR.rows);
-    trailCtx.clearRect(0, 0, TR.cols * TR.cell, TR.rows * TR.cell);
-    const my = Math.floor(TR.rows / 2);
-    this.p = [{ i: 0, x: 16, y: my, dx: 1, dy: 0, q: [], alive: true }, { i: 1, x: TR.cols - 17, y: my, dx: -1, dy: 0, q: [], alive: true }];
-    for (const p of this.p) this.mark(p);
-    this.rate = 14; this.acc = 0; this.playT = 0;
-  },
-  mark(p) {
-    this.grid[p.y * TR.cols + p.x] = p.i + 1;
-    const c = TR.cell, X = p.x * c, Y = p.y * c;
-    trailCtx.globalAlpha = 0.3; trailCtx.fillStyle = PC[p.i]; trailCtx.fillRect(X - 3, Y - 3, c + 6, c + 6);
-    trailCtx.globalAlpha = 1; trailCtx.fillRect(X + 1, Y + 1, c - 2, c - 2);
-    trailCtx.fillStyle = 'rgba(255,255,255,.6)'; trailCtx.fillRect(X + 4, Y + 4, c - 8, c - 8);
-  },
-  onInput(slot, d) {
-    if (d.t !== 'dir' || !DIRS[d.d]) return;
-    const p = this.p[slot]; if (!p) return;
-    const last = p.q.length ? p.q[p.q.length - 1] : [p.dx, p.dy], nd = DIRS[d.d];
-    if ((nd[0] === -last[0] && nd[1] === -last[1]) || (nd[0] === last[0] && nd[1] === last[1])) return;
-    if (p.q.length < 3) p.q.push(nd);
-  },
-  free(x, y) { return x >= 0 && y >= 0 && x < TR.cols && y < TR.rows && !this.grid[y * TR.cols + x]; },
-  flood(sx, sy, limit) {
-    if (!this.free(sx, sy)) return 0;
-    const seen = new Set([sy * TR.cols + sx]), st = [[sx, sy]]; let n = 0;
-    while (st.length && n < limit) {
-      const [x, y] = st.pop(); n++;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = x + dx, ny = y + dy, k = ny * TR.cols + nx;
-        if (this.free(nx, ny) && !seen.has(k)) { seen.add(k); st.push([nx, ny]); }
-      }
-    }
-    return n;
-  },
-  ai(p, o) {
-    const opts = [[p.dx, p.dy], [p.dy, -p.dx], [-p.dy, p.dx]];
-    let best = opts[0], bs = -1e9;
-    opts.forEach((d, k) => {
-      const nx = p.x + d[0], ny = p.y + d[1]; let s;
-      if (!this.free(nx, ny)) s = -1000;
-      else {
-        s = this.flood(nx, ny, 320) + (k === 0 ? 6 : 0) + Math.random() * 8;
-        if (o.alive && Math.abs(nx - (o.x + o.dx)) + Math.abs(ny - (o.y + o.dy)) <= 1) s -= 250;
-        for (let j = 2; j <= 6; j++) { if (this.free(p.x + d[0] * j, p.y + d[1] * j)) s += 1; else break; }
-      }
-      if (s > bs) { bs = s; best = d; }
-    });
-    p.dx = best[0]; p.dy = best[1];
-  },
-  step() {
-    for (const p of this.p) if (p.alive) {
-      if (isBot(p.i)) this.ai(p, this.p[1 - p.i]);
-      else if (p.q.length) { const d = p.q.shift(); p.dx = d[0]; p.dy = d[1]; }
-    }
-    const nxt = this.p.map((p) => [p.x + p.dx, p.y + p.dy]);
-    const die = [false, false];
-    for (const p of this.p) if (p.alive && !this.free(nxt[p.i][0], nxt[p.i][1])) die[p.i] = true;
-    if (this.p[0].alive && this.p[1].alive && nxt[0][0] === nxt[1][0] && nxt[0][1] === nxt[1][1]) die[0] = die[1] = true;
-    for (const p of this.p) if (p.alive) {
-      if (die[p.i]) {
-        p.alive = false;
-        const x = TR.x0 + (p.x + 0.5) * TR.cell, y = TR.y0 + (p.y + 0.5) * TR.cell;
-        burst(x, y, PC[p.i], 40, 500, 6, 0.9); burst(x, y, '#fff', 16, 300, 4, 0.5);
-        G.shake = 16; SFX.bighit(); toPlayer(p.i, 'vibe', 300);
-      } else { p.x = nxt[p.i][0]; p.y = nxt[p.i][1]; this.mark(p); }
-    }
-    const alive = this.p.filter((p) => p.alive);
-    if (alive.length < 2) endRound(this, alive.length ? alive[0].i : -1, alive.length ? '' : 'התנגשות חזיתית!');
-  },
-  update(dt) {
-    rounds(this, dt, TR.win, 'tron');
-    if (this.state !== 'play') return;
-    this.playT += dt; this.rate = Math.min(30, 14 + this.playT * 0.5);
-    this.acc += dt; const st = 1 / this.rate;
-    while (this.acc >= st && this.state === 'play') { this.acc -= st; this.step(); }
-  },
-  draw() {
-    bgGrad('#0b0c22', '#03030a');
-    const W = TR.cols * TR.cell, H = TR.rows * TR.cell;
-    ctx.drawImage(gridCv, TR.x0, TR.y0, W, H);
-    ctx.drawImage(trailCv, TR.x0, TR.y0, W, H);
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(160,170,255,.55)'; ctx.strokeRect(TR.x0 - 3, TR.y0 - 3, W + 6, H + 6);
-    for (const p of this.p) if (p.alive) {
-      const c = TR.cell, x = TR.x0 + p.x * c, y = TR.y0 + p.y * c;
-      ctx.save(); ctx.shadowColor = PC[p.i]; ctx.shadowBlur = 26; ctx.fillStyle = '#fff'; ctx.fillRect(x - 3, y - 3, c + 6, c + 6); ctx.restore();
-      if (this.state === 'intro') txt(pname(p.i), x + c / 2, y - 26, 22, PC[p.i], 'center', 800, 5);
-    }
-    drawFx();
-    scoreTop(this.score, `ראשון ל־${TR.win} סיבובים`);
-    roundOverlay(this, 'אופנועי אור', 'נווטו עם החצים בטלפון · אל תתנגשו בקיר או בשובל · זה מאיץ!');
-    codeBadge();
-  },
-};
-
-// ============================================================
 //  משחק 6: כדורגל ראשים
 // ============================================================
 const SC = { gy: 790, top: 150, bar: 520, gw: 104, hr: 50, br: 28, time: 75 };
@@ -1589,102 +1477,326 @@ function drawSumo(p) {
 }
 
 // ============================================================
-//  משחק 8: דו־קרב
+//  משחק: כדורעף
 // ============================================================
-const DUEL_WIN = 3;
-const FAKES = ['אשכולית!', 'אשדוד!', 'אשפה!', 'אשקלון!', 'אשמורת!'];
-const Duel = {
-  enter() { this.score = [0, 0]; this.round = 1; this.t = 0; this.reset(); this.state = 'intro'; this.it = 3; },
+const VB = { gy: 800, netX: 800, netTop: 548, netW: 18, pr: 64, br: 26, win: 7, top: 110 };
+const Volley = {
+  enter() { this.score = [0, 0]; this.state = 'intro'; this.it = 2.6; this.t = 0; this.server = Math.random() < 0.5 ? 0 : 1; this.reset(); },
   reset() {
-    this.phase = 'wait'; this.wait = rnd(2, 4.5); this.pt = 0;
-    this.fake = this.round > 1 && Math.random() < 0.55 ? rnd(0.9, Math.max(1, this.wait - 0.7)) : -1;
-    this.fakeWord = FAKES[Math.floor(Math.random() * FAKES.length)]; this.fakeT = 0;
-    this.res = null; this.shooter = -1; this.flash = 0; this.botT = rnd(0.24, 0.42);
+    this.pl = [0, 1].map((i) => ({ i, x: i ? 1200 : 400, y: VB.gy, vx: 0, vy: 0, ground: true, jq: false, kq: false, scd: 0, spikeT: 0 }));
+    this.b = { x: this.server ? 1200 : 400, y: 300, vx: 0, vy: 0, rot: 0 };
+    this.trail = []; this.spd = 1; this.err = [rnd(-30, 30), rnd(-30, 30)]; this.side = -1;
   },
-  onPlay() { this.pt = 0; },
-  onInput(slot, d) { if (d.t === 'act') this.shot(slot); },
-  shot(i) {
-    if (this.state !== 'play' || this.res) return;
-    if (this.phase === 'wait') {
-      this.res = { early: i }; tone(200, 0.4, 'sawtooth', 0.07, -100); toPlayer(i, 'vibe', 400);
-      endRound(this, 1 - i, `${pname(i)} שלף/ה מוקדם מדי!`); return;
+  onInput(slot, d) { const p = this.pl[slot]; if (!p) return; if (d.t === 'jump') p.jq = true; if (d.t === 'kick') p.kq = true; },
+  range(i) { const h = VB.netW / 2; return i === 0 ? [40 + VB.pr, VB.netX - h - VB.pr * 0.6] : [VB.netX + h + VB.pr * 0.6, VW - 40 - VB.pr]; },
+  predict() {
+    // לאן הכדור ייפול (בגובה ראש השחקן) – בשביל המחשב
+    let { x, y, vx, vy } = this.b; const h = VB.gy - VB.pr - VB.br * 0.4;
+    for (let k = 0; k < 300; k++) {
+      vy += 1000 / 60; x += vx / 60; y += vy / 60;
+      if (x < VB.br) { x = VB.br; vx = Math.abs(vx); } if (x > VW - VB.br) { x = VW - VB.br; vx = -Math.abs(vx); }
+      if (vy > 0 && y >= h) break;
     }
-    const ms = Math.round(performance.now() - this.fireAt);
-    this.res = { win: i, ms }; this.shooter = i; this.flash = 1; this.fallT = 0;
-    SFX.bighit(); noise(0.4, 0.5, 600); G.shake = 18; toPlayer(1 - i, 'vibe', 300);
-    endRound(this, i, `זמן תגובה: ${ms} מילישניות`);
+    return x;
+  },
+  ai(p) {
+    const b = this.b, toNet = p.i === 0 ? 1 : -1, [mn, mx] = this.range(p.i);
+    const mine = (x) => (p.i === 0 ? x < VB.netX : x > VB.netX);
+    const lx = this.predict();
+    let tx = mine(lx) ? lx - toNet * 24 + this.err[p.i] : (p.i ? 1200 : 400);
+    tx = clamp(tx, mn, mx);
+    const dx = tx - p.x;
+    if (mine(b.x) && p.ground && Math.abs(b.x - p.x) < 90 && b.vy > 0 && b.y > VB.gy - 330 && b.y < VB.gy - 170 && Math.abs(b.x - VB.netX) < 330 && Math.random() < 0.5) p.jq = true;
+    if (!p.ground && mine(b.x) && Math.hypot(b.x - p.x, b.y - p.y) < VB.pr + VB.br + 60 && b.y < p.y && Math.random() < 0.25) p.kq = true;
+    return [dx < -10, dx > 10];
+  },
+  point(winner) {
+    this.score[winner]++; this.scorer = winner; this.server = 1 - winner;
+    this.state = 'point'; this.pt = 1.6; SFX.goal(); G.shake = 10;
+    burst(this.b.x, VB.gy - 10, '#f5deb3', 30, 400, 7, 0.8); burst(this.b.x, VB.gy - 10, PC[winner], 20, 350, 6, 0.7);
+    toPlayer(winner, 'vibe', [80, 40, 80]); toPlayer(1 - winner, 'vibe', 220);
+  },
+  ballStep(dt) {
+    const b = this.b, R = VB.br;
+    const side = b.x < VB.netX ? 0 : 1;
+    if (side !== this.side) { this.side = side; this.err[side] = rnd(-34, 34) * (Math.random() < 0.15 ? 2.6 : 1); }
+    dt *= this.spd;
+    b.vy += 1000 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vx * dt / R;
+    if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx) * 0.9; SFX.wall(); }
+    if (b.x > VW - R) { b.x = VW - R; b.vx = -Math.abs(b.vx) * 0.9; SFX.wall(); }
+    if (b.y < VB.top + R) { b.y = VB.top + R; b.vy = Math.abs(b.vy) * 0.8; }
+    const net = [VB.netX - VB.netW / 2, VB.netTop, VB.netW, VB.gy - VB.netTop];
+    const pn = circRect(b.x, b.y, R, net);
+    if (pn) {
+      b.x += pn[0]; b.y += pn[1];
+      const m = Math.hypot(pn[0], pn[1]) || 1, nx = pn[0] / m, ny = pn[1] / m, vn = b.vx * nx + b.vy * ny;
+      if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vy -= 1.7 * vn * ny; SFX.wall(); }
+      if (ny < -0.5) { b.vx += (b.x < VB.netX ? -1 : 1) * 160; b.vy = Math.min(b.vy, -260); }
+    }
+    for (const p of this.pl) {
+      const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), md = VB.pr + R;
+      if (d < md && d > 0.01 && b.y < p.y + 4) {
+        const nx = dx / d, ny = dy / d;
+        b.x = p.x + nx * md; b.y = p.y + ny * md;
+        const vn = (b.vx - p.vx) * nx + (b.vy - p.vy) * ny;
+        if (vn < 0) {
+          b.vx -= 1.9 * vn * nx; b.vy -= 1.9 * vn * ny;
+          b.vx += p.vx * 0.3; b.vy += Math.min(0, p.vy) * 0.35;
+          if (ny < -0.2) b.vy = Math.min(b.vy, -780);
+          if (Math.abs(b.vx) < 150) b.vx = (p.i === 0 ? 1 : -1) * 150;
+          this.spd = Math.min(1.55, this.spd + 0.035);
+          SFX.puck(); burst(b.x - nx * R, b.y - ny * R, PC[p.i], 6, 180, 4, 0.25); toPlayer(p.i, 'vibe', 15);
+        }
+      }
+      if (p.kq) {
+        p.kq = false;
+        const near = Math.hypot(b.x - p.x, b.y - p.y) < VB.pr + R + 75;
+        if (p.scd <= 0 && !p.ground && near && b.y < p.y) {
+          const toNet = p.i === 0 ? 1 : -1;
+          b.vx = toNet * 1050; b.vy = b.y > VB.netTop - 70 ? -260 : 320;
+          p.scd = 0.8; p.spikeT = 0.25;
+          SFX.hit(); G.shake = Math.max(G.shake, 8); burst(b.x, b.y, '#fff', 14, 320, 5, 0.35); floatText('הנחתה!', b.x, b.y - 50, GOLD, 34);
+          toPlayer(p.i, 'vibe', 40);
+        }
+      }
+    }
+    const sp = Math.hypot(b.vx, b.vy); if (sp > 1450) { b.vx *= 1450 / sp; b.vy *= 1450 / sp; }
+    this.trail.push([b.x, b.y]); if (this.trail.length > 10) this.trail.shift();
+    if (b.y >= VB.gy - R) { b.y = VB.gy - R; this.point(b.x < VB.netX ? 1 : 0); }
   },
   update(dt) {
-    this.t += dt; this.flash = Math.max(0, this.flash - dt * 3);
-    rounds(this, dt, DUEL_WIN, 'duel');
-    if (this.state !== 'play') return;
-    this.pt += dt;
-    if (this.phase === 'wait') {
-      if (this.fake > 0 && this.pt >= this.fake && this.fakeT === 0) { this.fakeT = 0.9; tone(520, 0.15, 'square', 0.06); }
-      if (this.fakeT > 0) { this.fakeT -= dt; if (this.fakeT <= 0) this.fakeT = -1; }
-      if (this.pt >= this.wait) { this.phase = 'fire'; this.fireAt = performance.now(); this.firePt = this.pt; tone(1000, 0.3, 'square', 0.09); }
-      for (let i = 0; i < 2; i++) if (isBot(i) && this.fakeT > 0 && Math.random() < dt * 0.15) this.shot(i);
-    } else {
-      for (let i = 0; i < 2; i++) if (isBot(i) && this.pt - this.firePt >= this.botT + i * 0.03) this.shot(i);
-      if (this.state === 'play' && this.pt - this.firePt > 3) { this.res = { none: true }; endRound(this, -1, 'אף אחד לא שלף…'); }
+    this.t += dt;
+    if (this.state === 'intro') { this.it -= dt; if (this.it <= 0) { this.state = 'play'; SFX.go(); } }
+    else if (this.state === 'point') {
+      this.pt -= dt;
+      if (this.pt <= 0) {
+        if (Math.max(this.score[0], this.score[1]) >= VB.win) { this.state = 'over'; this.ot = 1.2; }
+        else { this.reset(); this.state = 'play'; tone(900, 0.15, 'square', 0.05); }
+      }
+    } else if (this.state === 'over') {
+      this.ot -= dt;
+      if (this.ot <= 0) { const w = this.score[0] > this.score[1] ? 0 : 1; showResults(w, `${this.score[w]} : ${this.score[1 - w]}`, 'volley'); }
+      return;
     }
+    const live = this.state === 'play';
+    for (const p of this.pl) {
+      let l = false, r = false;
+      if (live) { if (isBot(p.i)) [l, r] = this.ai(p); else { l = inp[p.i].l; r = inp[p.i].r; } }
+      else p.jq = p.kq = false;
+      const sp = isBot(p.i) ? 500 : 560;
+      p.vx = lerp(p.vx, ((r ? 1 : 0) - (l ? 1 : 0)) * sp, Math.min(1, 14 * dt));
+      if (p.jq) { p.jq = false; if (p.ground) { p.vy = -900; p.ground = false; tone(380, 0.09, 'sine', 0.05, 300); } }
+      p.scd = Math.max(0, p.scd - dt); p.spikeT = Math.max(0, p.spikeT - dt);
+      p.vy += 2400 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.y >= VB.gy) { p.y = VB.gy; p.vy = 0; p.ground = true; }
+      const [mn, mx] = this.range(p.i); p.x = clamp(p.x, mn, mx);
+    }
+    if (live) this.ballStep(dt); else p0kq(this);
   },
   draw() {
-    const g = ctx.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, '#2d1b4e'); g.addColorStop(0.55, '#ff7e5f'); g.addColorStop(1, '#feb47b');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, VW, 640);
-    ctx.beginPath(); ctx.arc(800, 610, 170, 0, Math.PI * 2); ctx.fillStyle = '#ffd27a'; ctx.fill();
-    ctx.fillStyle = '#7a3b3b';
-    ctx.beginPath(); ctx.moveTo(0, 640); ctx.lineTo(0, 520); ctx.lineTo(120, 505); ctx.lineTo(160, 450); ctx.lineTo(330, 450); ctx.lineTo(370, 520); ctx.lineTo(560, 560); ctx.lineTo(560, 640); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(VW, 640); ctx.lineTo(VW, 540); ctx.lineTo(1450, 520); ctx.lineTo(1420, 470); ctx.lineTo(1250, 470); ctx.lineTo(1210, 530); ctx.lineTo(1060, 570); ctx.lineTo(1060, 640); ctx.fill();
-    ctx.fillStyle = '#5a2e1e'; ctx.fillRect(0, 640, VW, 260); ctx.fillStyle = '#6b3a24'; ctx.fillRect(0, 640, VW, 18);
-    drawCactus(210, 720, 1); drawCactus(1420, 705, 0.8);
-    const tw = ((this.t * 120) % (VW + 200)) - 100;
-    ctx.save(); ctx.translate(tw, 790); ctx.rotate(this.t * 4); ctx.strokeStyle = '#8a5a35'; ctx.lineWidth = 3;
-    for (let j = 0; j < 6; j++) { ctx.beginPath(); ctx.arc(0, 0, 16 + j * 2, j, j + 4); ctx.stroke(); } ctx.restore();
-    drawCowboy(this, 0, 470, 770); drawCowboy(this, 1, 1130, 770);
-    if (this.state === 'play') {
-      if (this.phase === 'wait') {
-        if (this.fakeT > 0) txt(this.fakeWord, VW / 2, 300, 150, '#ffb703', 'center', 900, 14);
-        else { txt('המתינו…', VW / 2, 290, 110, '#fff', 'center', 900, 12); txt('לחצו רק כשמופיע "אש!"', VW / 2, 390, 32, '#fff', 'center', 700, 8); }
-      } else txt('אש!', VW / 2, 300, 240, '#ff2a2a', 'center', 900, 18);
+    const sky = ctx.createLinearGradient(0, 0, 0, 600); sky.addColorStop(0, '#3aa0e8'); sky.addColorStop(1, '#bfe8ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, VW, 600);
+    ctx.beginPath(); ctx.arc(1330, 210, 80, 0, Math.PI * 2); ctx.fillStyle = '#fff3b0'; ctx.fill();
+    for (const [x, y, s] of [[230, 220, 1], [620, 160, 0.8], [1050, 250, 0.7]]) {
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      for (const [ox, oy, r] of [[0, 0, 40], [44, -12, 50], [92, 0, 40], [46, 14, 44]]) { ctx.beginPath(); ctx.arc(x + ox * s + ((this.t * 8) % VW), y + oy * s, r * s, 0, Math.PI * 2); ctx.fill(); }
     }
-    if (this.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${this.flash * 0.8})`; ctx.fillRect(0, 0, VW, VH); }
+    ctx.fillStyle = '#1f7fbf'; ctx.fillRect(0, 560, VW, 80);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; for (let x = 0; x < VW; x += 90) ctx.fillRect((x + this.t * 20) % VW, 590 + (x % 3) * 12, 40, 3);
+    ctx.fillStyle = '#f1d9a5'; ctx.fillRect(0, 630, VW, VH - 630);
+    ctx.fillStyle = '#e6c88a'; for (let k = 0; k < 70; k++) ctx.fillRect((k * 263) % VW, 650 + ((k * 97) % 240), 6, 3);
+    ctx.fillStyle = 'rgba(0,0,0,.08)'; ctx.fillRect(0, VB.gy, VW, 4);
+    // צל כדור
+    const b = this.b, hk = clamp(1 - (VB.gy - b.y) / 700, 0.25, 1);
+    ctx.beginPath(); ctx.ellipse(b.x, VB.gy + 4, 30 * hk, 8 * hk, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fill();
+    // רשת
+    ctx.fillStyle = '#6b4a2b'; ctx.fillRect(VB.netX - 6, VB.netTop - 20, 12, VB.gy - VB.netTop + 20);
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(VB.netX - VB.netW / 2, VB.netTop, VB.netW, VB.gy - VB.netTop - 60);
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
+    for (let y = VB.netTop; y < VB.gy - 60; y += 16) { ctx.beginPath(); ctx.moveTo(VB.netX - VB.netW / 2, y); ctx.lineTo(VB.netX + VB.netW / 2, y); ctx.stroke(); }
+    ctx.fillStyle = '#fff'; ctx.fillRect(VB.netX - VB.netW / 2 - 3, VB.netTop - 6, VB.netW + 6, 10);
+    // שחקנים
+    for (const p of this.pl) drawSlime(p, b);
+    // שובל וכדור
+    this.trail.forEach(([x, y], k) => { ctx.globalAlpha = (k / this.trail.length) * 0.25; ctx.beginPath(); ctx.arc(x, y, VB.br * (0.4 + 0.6 * k / this.trail.length), 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); });
+    ctx.globalAlpha = 1;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+    ctx.beginPath(); ctx.arc(0, 0, VB.br, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.ellipse(-14, 0, 14, 30, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.ellipse(16, -6, 12, 28, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#1b1f3b'; ctx.beginPath(); ctx.arc(0, 0, VB.br, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-40, 0, 40, -0.6, 0.6); ctx.stroke(); ctx.beginPath(); ctx.arc(40, 0, 40, Math.PI - 0.6, Math.PI + 0.6); ctx.stroke();
+    ctx.restore();
     drawFx();
-    scoreTop(this.score, `ראשון ל־${DUEL_WIN} סיבובים`);
-    roundOverlay(this, 'דו־קרב', 'כשמופיע "אש!" לחצו הכי מהר · מוקדם מדי = הפסד · יש מילים מטעות!');
+    scoreTop(this.score, `ראשון ל־${VB.win} נקודות`);
+    if (this.state === 'intro') banner('כדורעף', '◀ ▶ לזוז · קפיצה · "הנחתה" באוויר ליד הכדור', '#fff', 120);
+    if (this.state === 'point') banner('נקודה!', pname(this.scorer), PC[this.scorer], 150);
+    if (this.state === 'over') banner('סוף המשחק!', '', '#fff', 110);
     codeBadge();
   },
 };
-function drawCactus(x, y, s) {
-  ctx.fillStyle = '#2b1a1f';
-  rr(x - 14 * s, y - 130 * s, 28 * s, 130 * s, 14 * s); ctx.fill();
-  rr(x - 50 * s, y - 95 * s, 22 * s, 55 * s, 11 * s); ctx.fill(); rr(x - 50 * s, y - 52 * s, 50 * s, 18 * s, 9 * s); ctx.fill();
-  rr(x + 28 * s, y - 115 * s, 22 * s, 60 * s, 11 * s); ctx.fill(); rr(x, y - 70 * s, 50 * s, 18 * s, 9 * s); ctx.fill();
+function p0kq(sc) { for (const p of sc.pl) p.kq = false; }
+function drawSlime(p, b) {
+  const r = VB.pr;
+  ctx.beginPath(); ctx.ellipse(p.x, VB.gy + 4, r * 0.95, 12, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y, r, Math.PI, 0); ctx.closePath(); ctx.fillStyle = PC_DARK[p.i]; ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y - 4, r - 5, Math.PI, 0); ctx.closePath(); ctx.fillStyle = PC[p.i]; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(p.x - r * 0.35, p.y - r * 0.6, r * 0.22, r * 0.1, -0.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fill();
+  const d = p.i === 0 ? 1 : -1, ex = p.x + d * r * 0.42, ey = p.y - r * 0.55;
+  ctx.beginPath(); ctx.arc(ex, ey, 13, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  const a = Math.atan2(b.y - ey, b.x - ex);
+  ctx.beginPath(); ctx.arc(ex + Math.cos(a) * 6, ey + Math.sin(a) * 6, 6, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill();
+  if (p.spikeT > 0) { ctx.strokeStyle = GOLD; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(p.x, p.y, r + 10, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+  txt(pname(p.i), p.x, VB.gy + 40, 22, PC_DARK[p.i], 'center', 800);
 }
-function drawCowboy(sc, i, x, fy) {
-  const d = i ? -1 : 1, ink = '#1a0f14';
-  let fall = 0;
-  if (sc.state === 'roundEnd' && sc.shooter >= 0 && sc.shooter !== i) fall = Math.min(1, (2.4 - sc.rt) * 2.5);
-  ctx.save(); ctx.translate(x, fy); ctx.rotate(-d * 1.35 * fall); ctx.translate(-x, -fy);
-  ctx.strokeStyle = ink; ctx.lineCap = 'round'; ctx.lineWidth = 20;
-  ctx.beginPath(); ctx.moveTo(x - 10, fy - 105); ctx.lineTo(x - 20, fy); ctx.moveTo(x + 10, fy - 105); ctx.lineTo(x + 20, fy); ctx.stroke();
-  ctx.fillStyle = ink; rr(x - 28, fy - 215, 56, 116, 16); ctx.fill();
-  ctx.beginPath(); ctx.arc(x, fy - 240, 25, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x, fy - 258, 50, 9, 0, 0, Math.PI * 2); ctx.fill();
-  rr(x - 24, fy - 300, 48, 44, 10); ctx.fill();
-  ctx.fillStyle = PC[i]; ctx.fillRect(x - 24, fy - 268, 48, 8);
-  ctx.beginPath(); ctx.moveTo(x - 20, fy - 214); ctx.lineTo(x + 20, fy - 214); ctx.lineTo(x + d * 4, fy - 186); ctx.fill();
-  const drawn = sc.shooter === i && sc.state === 'roundEnd';
-  const early = sc.res && sc.res.early === i;
-  ctx.strokeStyle = ink; ctx.lineWidth = 16;
-  const sh = [x + d * 20, fy - 196];
-  const hand = drawn ? [x + d * 100, fy - 196] : early ? [x + d * 60, fy - 130] : [x + d * 30, fy - 120];
-  ctx.beginPath(); ctx.moveTo(sh[0], sh[1]); ctx.lineTo(hand[0], hand[1]); ctx.stroke();
-  ctx.fillStyle = '#2a2a2a';
-  if (drawn) { rr(d > 0 ? hand[0] : hand[0] - 36, hand[1] - 7, 36, 12, 3); ctx.fill(); if (sc.flash > 0.3) { ctx.beginPath(); ctx.arc(hand[0] + d * 48, hand[1] - 1, 22 * sc.flash, 0, Math.PI * 2); ctx.fillStyle = '#ffe066'; ctx.fill(); } }
-  else { rr(hand[0] - 6, hand[1], 12, 30, 3); ctx.fill(); }
+
+// ============================================================
+//  משחק: פצצה חמה
+// ============================================================
+const BM = { x0: 80, y0: 140, x1: 1520, y1: 860, r: 34, win: 3 };
+const PILLARS = [[560, 360, 46], [1040, 360, 46], [560, 640, 46], [1040, 640, 46]];
+const Bomb = {
+  enter() { this.score = [0, 0]; this.round = 1; this.reset(); this.state = 'intro'; this.it = 2.8; },
+  reset() {
+    this.p = [0, 1].map((i) => ({ i, x: i ? 1300 : 300, y: 500, vx: 0, vy: 0, face: i ? Math.PI : 0, dcd: 0, dt: 0, ddx: 0, ddy: 0, stun: 0, act: false, ai: { t: 0, sx: 0, sy: 0 } }));
+    this.holder = Math.random() < 0.5 ? 0 : 1; this.fuse0 = rnd(13, 19); this.fuse = this.fuse0;
+    this.passCd = 0; this.beepT = 0; this.boom = -1; this.scorch = null;
+  },
+  onInput(slot, d) { if (d.t === 'act' && this.p[slot]) this.p[slot].act = true; },
+  avoid(me) {
+    let ax = 0, ay = 0;
+    for (const [px, py, pr] of PILLARS) { const dx = me.x - px, dy = me.y - py, d = Math.hypot(dx, dy) || 1; if (d < pr + 110) { const k = (pr + 110 - d) / 110; ax += dx / d * k * 1.6; ay += dy / d * k * 1.6; } }
+    const m = 150;
+    if (me.x < BM.x0 + m) ax += (BM.x0 + m - me.x) / m * 1.8; if (me.x > BM.x1 - m) ax -= (me.x - (BM.x1 - m)) / m * 1.8;
+    if (me.y < BM.y0 + m) ay += (BM.y0 + m - me.y) / m * 1.8; if (me.y > BM.y1 - m) ay -= (me.y - (BM.y1 - m)) / m * 1.8;
+    return [ax, ay];
+  },
+  ai(me, o, dt) {
+    const A = me.ai; A.t -= dt;
+    if (A.t <= 0) { A.t = rnd(0.6, 1.4); const s = Math.random() < 0.5 ? 1 : -1; A.sx = s; }
+    let mx, my;
+    const [ax, ay] = this.avoid(me);
+    if (this.holder === me.i) {
+      const tx = o.x + o.vx * 0.3, ty = o.y + o.vy * 0.3, dx = tx - me.x, dy = ty - me.y, d = Math.hypot(dx, dy) || 1;
+      mx = dx / d + ax * 0.6; my = dy / d + ay * 0.6;
+      if (d < 210 && me.dcd <= 0 && this.passCd <= 0 && Math.random() < 0.08) me.act = true;
+    } else {
+      const dx = me.x - o.x, dy = me.y - o.y, d = Math.hypot(dx, dy) || 1;
+      mx = dx / d + (-dy / d) * A.sx * 0.6 + ax; my = dy / d + (dx / d) * A.sx * 0.6 + ay;
+      if (d < 170 && me.dcd <= 0 && Math.random() < 0.1) me.act = true;
+    }
+    const m = Math.hypot(mx, my) || 1; return [mx / m, my / m];
+  },
+  explode() {
+    const h = this.p[this.holder];
+    this.boom = this.holder; this.scorch = [h.x, h.y];
+    burst(h.x, h.y, '#ff6b35', 70, 750, 10, 1.1); burst(h.x, h.y, '#ffd60a', 40, 500, 8, 0.9); burst(h.x, h.y, '#333', 30, 350, 12, 1.4);
+    G.shake = 26; noise(0.6, 0.6, 500); tone(70, 0.6, 'sine', 0.35, -40); toPlayer(this.holder, 'vibe', [400, 100, 400]);
+    endRound(this, 1 - this.holder, `${pname(this.holder)} נשאר/ה עם הפצצה!`);
+  },
+  update(dt) {
+    rounds(this, dt, BM.win, 'bomb');
+    const live = this.state === 'play';
+    if (live) {
+      this.fuse -= dt; this.passCd = Math.max(0, this.passCd - dt);
+      this.beepT -= dt;
+      if (this.beepT <= 0) { const k = clamp(this.fuse / this.fuse0, 0, 1); this.beepT = 0.12 + 0.8 * k; tone(700 + (1 - k) * 700, 0.06, 'square', 0.04); }
+      if (this.fuse <= 0) { this.explode(); }
+    }
+    for (const me of this.p) {
+      const o = this.p[1 - me.i];
+      me.dcd = Math.max(0, me.dcd - dt); me.dt = Math.max(0, me.dt - dt); me.stun = Math.max(0, me.stun - dt);
+      if (this.boom === me.i) { me.vx = me.vy = 0; continue; }
+      let jx = 0, jy = 0;
+      if (live && me.stun <= 0) { if (isBot(me.i)) [jx, jy] = this.ai(me, o, dt); else [jx, jy] = stickOf(me.i); }
+      const m = Math.min(1, Math.hypot(jx, jy));
+      if (me.act) {
+        me.act = false;
+        if (live && me.stun <= 0 && me.dcd <= 0) {
+          const a = m > 0.2 ? Math.atan2(jy, jx) : me.face;
+          me.ddx = Math.cos(a); me.ddy = Math.sin(a); me.dt = 0.22; me.dcd = 1.5; me.face = a;
+          SFX.whoosh(); toPlayer(me.i, 'vibe', 20);
+        }
+      }
+      const base = (this.holder === me.i ? 370 : 335) * (isBot(me.i) ? 0.93 : 1);
+      let tvx = 0, tvy = 0;
+      if (me.dt > 0) { tvx = me.ddx * base * 2.6; tvy = me.ddy * base * 2.6; }
+      else if (m > 0.12) { const a = Math.atan2(jy, jx); tvx = Math.cos(a) * base * m; tvy = Math.sin(a) * base * m; me.face = a; }
+      const k = Math.min(1, (me.dt > 0 ? 30 : 10) * dt);
+      me.vx = lerp(me.vx, tvx, k); me.vy = lerp(me.vy, tvy, k);
+      me.x += me.vx * dt; me.y += me.vy * dt;
+      me.x = clamp(me.x, BM.x0 + BM.r, BM.x1 - BM.r); me.y = clamp(me.y, BM.y0 + BM.r, BM.y1 - BM.r);
+      for (const [px, py, pr] of PILLARS) {
+        const dx = me.x - px, dy = me.y - py, d = Math.hypot(dx, dy), md = pr + BM.r;
+        if (d < md && d > 0.01) { me.x = px + dx / d * md; me.y = py + dy / d * md; }
+      }
+      if (live && (Math.abs(me.vx) + Math.abs(me.vy) > 60) && Math.random() < 0.3) parts.push({ x: me.x + rnd(-10, 10), y: me.y + BM.r - 4, vx: 0, vy: -20, life: 0.4, max: 0.4, col: 'rgba(255,255,255,.18)', size: 4, g: 0 });
+    }
+    const [a, b] = this.p;
+    if (this.boom < 0) {
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), md = BM.r * 2;
+      if (d < md + 4 && live && this.passCd <= 0) {
+        const nh = 1 - this.holder, newH = this.p[nh];
+        this.holder = nh; this.passCd = 0.9; newH.stun = 0.4;
+        SFX.hit(); G.shake = Math.max(G.shake, 7);
+        burst((a.x + b.x) / 2, (a.y + b.y) / 2, '#ffd60a', 16, 320, 5, 0.4);
+        floatText('קיבלת פצצה!', newH.x, newH.y - 70, PC[nh], 30);
+        toPlayer(nh, 'vibe', [60, 40, 60]); toPlayer(1 - nh, 'vibe', 20);
+      }
+      if (d < md && d > 0.01) { const k = (md - d) / 2 / d; a.x -= dx * k; a.y -= dy * k; b.x += dx * k; b.y += dy * k; }
+    }
+  },
+  draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, VW, VH);
+    for (let x = BM.x0; x < BM.x1; x += 80) for (let y = BM.y0; y < BM.y1; y += 80) {
+      ctx.fillStyle = ((x - BM.x0) / 80 + (y - BM.y0) / 80) % 2 ? '#2a2347' : '#241e3e'; ctx.fillRect(x, y, 80, 80);
+    }
+    if (this.scorch) { const [x, y] = this.scorch, g = ctx.createRadialGradient(x, y, 5, x, y, 130); g.addColorStop(0, 'rgba(0,0,0,.75)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - 130, y - 130, 260, 260); }
+    ctx.lineWidth = 8; ctx.strokeStyle = '#ff4d6d'; ctx.globalAlpha = 0.5; ctx.strokeRect(BM.x0 - 4, BM.y0 - 4, BM.x1 - BM.x0 + 8, BM.y1 - BM.y0 + 8); ctx.globalAlpha = 1;
+    for (const [px, py, pr] of PILLARS) {
+      ctx.beginPath(); ctx.ellipse(px + 6, py + 12, pr, pr * 0.9, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fillStyle = '#4a4170'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py - 6, pr - 8, 0, Math.PI * 2); ctx.fillStyle = '#6a5fa0'; ctx.fill();
+    }
+    for (const me of this.p) if (this.boom !== me.i) drawRunner(me, this.holder === me.i, this.passCd);
+    if (this.boom < 0) { const h = this.p[this.holder]; drawBombAt(h.x, h.y - 66, clamp(this.fuse / this.fuse0, 0, 1), G.t); }
+    if (this.state === 'play' && this.fuse < 3) { const a = (0.5 + 0.5 * Math.sin(G.t * 18)) * 0.25; ctx.fillStyle = `rgba(255,30,30,${a})`; ctx.fillRect(0, 0, VW, VH); }
+    drawFx();
+    scoreTop(this.score, `ראשון ל־${BM.win} סיבובים`);
+    roundOverlay(this, 'פצצה חמה', 'נגעו ביריב כדי להעביר לו את הפצצה · "ספרינט" לזינוק · מי שנשאר איתה – מתפוצץ!');
+    codeBadge();
+  },
+};
+function drawRunner(me, hold, passCd) {
+  ctx.beginPath(); ctx.ellipse(me.x + 4, me.y + BM.r - 2, BM.r, 10, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fill();
+  if (hold) { ctx.beginPath(); ctx.arc(me.x, me.y, BM.r + 10 + Math.sin(G.t * 14) * 3, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.strokeStyle = '#ff5e3a'; ctx.stroke(); }
+  if (me.stun > 0) ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.arc(me.x, me.y, BM.r, 0, Math.PI * 2); ctx.fillStyle = PC_DARK[me.i]; ctx.fill();
+  ctx.beginPath(); ctx.arc(me.x, me.y - 3, BM.r - 4, 0, Math.PI * 2); ctx.fillStyle = PC[me.i]; ctx.fill();
+  const fx = Math.cos(me.face), fy = Math.sin(me.face);
+  for (const s of [-1, 1]) {
+    const ex = me.x + fx * 14 - fy * 10 * s, ey = me.y - 6 + fy * 10 + fx * 10 * s;
+    ctx.beginPath(); ctx.arc(ex, ey, 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(ex + fx * 3, ey + fy * 3, 4, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  if (me.dt > 0) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 4; for (const o of [-14, 0, 14]) { ctx.beginPath(); ctx.moveTo(me.x - fx * 40 - fy * o, me.y - fy * 40 + fx * o); ctx.lineTo(me.x - fx * 75 - fy * o, me.y - fy * 75 + fx * o); ctx.stroke(); } }
+  txt(pname(me.i), me.x, me.y + BM.r + 22, 18, '#fff', 'center', 800, 4);
+}
+function drawBombAt(x, y, k, T) {
+  const pulse = 1 + (1 - k) * 0.25 * Math.max(0, Math.sin(T * (6 + (1 - k) * 20)));
+  ctx.save(); ctx.translate(x, y); ctx.scale(pulse, pulse);
+  ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fillStyle = k < 0.25 ? '#5a1010' : '#1b1b24'; ctx.fill();
+  ctx.beginPath(); ctx.arc(-8, -8, 7, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fill();
+  ctx.fillStyle = '#555'; ctx.fillRect(-6, -30, 12, 9);
+  const L = 8 + 26 * k;
+  ctx.strokeStyle = '#c9a46b'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, -30); ctx.quadraticCurveTo(L * 0.5, -30 - L * 0.4, L * 0.7, -30 - L * 0.8); ctx.stroke();
+  const sx = L * 0.7, sy = -30 - L * 0.8;
+  ctx.fillStyle = '#ffd60a'; star(sx, sy, 10 + Math.random() * 4, 4, 6); ctx.fill();
+  ctx.fillStyle = '#ff5e3a'; star(sx, sy, 5, 2, 5); ctx.fill();
   ctx.restore();
-  txt(pname(i), x, fy + 50, 26, PC[i], 'center', 900, 6);
 }
 
 // ============================================================

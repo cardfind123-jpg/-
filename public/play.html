@@ -39,7 +39,7 @@ input:focus{border-color:#2ec5ff}
 .tourBtn{width:100%;padding:14px;border-radius:18px;font-weight:900;font-size:19px;background:rgba(255,214,10,.12);border:2px solid #ffd60a;color:#ffd60a;touch-action:manipulation}
 #menu .center{justify-content:flex-start;padding-top:6px;max-width:520px}
 .game:active{border-color:var(--me);transform:scale(.98)}
-.game[data-g=race] b{color:#ffb703}.game[data-g=box] b{color:#ff4d6d}.game[data-g=hockey] b{color:#2ec5ff}.game[data-g=soccer] b{color:#6bff8a}.game[data-g=tanks] b{color:#a3e635}.game[data-g=tron] b{color:#c084fc}.game[data-g=sumo] b{color:#fb923c}.game[data-g=duel] b{color:#f87171}
+.game[data-g=race] b{color:#ffb703}.game[data-g=box] b{color:#ff4d6d}.game[data-g=hockey] b{color:#2ec5ff}.game[data-g=soccer] b{color:#6bff8a}.game[data-g=tanks] b{color:#a3e635}.game[data-g=volley] b{color:#facc15}.game[data-g=sumo] b{color:#fb923c}.game[data-g=bomb] b{color:#f87171}
 /* ג׳ויסטיק */
 .stickWrap{flex:1;display:flex;gap:10px;min-height:0}
 #stickZone{flex:1.4;position:relative;border-radius:24px;background:radial-gradient(circle at 50% 50%,#1e2550,#11142c);border:3px solid var(--line);overflow:hidden;touch-action:none}
@@ -47,18 +47,12 @@ input:focus{border-color:#2ec5ff}
 #sBase{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:3px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);left:50%;top:50%;pointer-events:none}
 #sKnob{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;left:50%;top:50%;border-radius:50%;background:var(--me);box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .pad.act{background:linear-gradient(180deg,#f97316,#c2410c)}
-/* חצים */
-.dpad{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:10px;min-height:0;max-width:640px;width:100%;margin:0 auto}
-.dpad .pad{background:linear-gradient(180deg,#7c3aed,#4c1d95);font-size:clamp(28px,9vmin,60px)}
-.dpad .c{background:transparent;box-shadow:none;color:var(--mut);font-size:13px;font-weight:600;text-align:center;line-height:1.3}
 /* כדורגל */
 .soc{flex:1;display:flex;gap:10px;min-height:0}
 .soc .grp{flex:1;display:flex;gap:10px}
 .pad.mv{background:#2a3060}
 .pad.jump{background:linear-gradient(180deg,#22c55e,#15803d)}
 .pad.kick{background:linear-gradient(180deg,var(--me),color-mix(in srgb,var(--me) 60%,#000))}
-/* דו־קרב */
-#duelBtn{flex:1;font-size:clamp(48px,16vmin,120px);background:radial-gradient(circle,#ef4444,#7f1d1d);border-radius:32px}
 /* טורבו */
 .boostBtn{position:relative;flex:0 0 auto;width:100%;min-height:58px;overflow:hidden;background:#1c2142;border:2px solid var(--line);font-size:22px}
 .boostBtn span{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#ff5e3a,#ffb703);transition:width .25s}
@@ -140,9 +134,9 @@ input:focus{border-color:#2ec5ff}
       <button class="game" data-g="hockey"><b>הוקי אוויר</b><span>גררו ותבקיעו</span></button>
       <button class="game" data-g="soccer"><b>כדורגל ראשים</b><span>נגיחות ובעיטות</span></button>
       <button class="game" data-g="tanks"><b>טנקים</b><span>פגזים קופצים מהקירות</span></button>
-      <button class="game" data-g="tron"><b>אופנועי אור</b><span>אל תתנגשו בשובל</span></button>
+      <button class="game" data-g="volley"><b>כדורעף</b><span>קפיצות והנחתות</span></button>
       <button class="game" data-g="sumo"><b>סומו</b><span>דחפו מהזירה</span></button>
-      <button class="game" data-g="duel"><b>דו־קרב</b><span>מי שולף ראשון?</span></button>
+      <button class="game" data-g="bomb"><b>פצצה חמה</b><span>תעבירו לפני הפיצוץ</span></button>
     </div>
     <button class="tourBtn" data-g="tour">🏆 טורניר · 5 משחקים ברצף</button>
     <p class="sub">כל שחקן יכול לבחור · הסתכלו על המסך הגדול</p>
@@ -201,27 +195,12 @@ input:focus{border-color:#2ec5ff}
   </div>
 </section>
 
-<section class="view" id="dpad">
-  <div class="bar"><span class="me"></span><button class="quit">✕ יציאה</button></div>
-  <div class="dpad ltr" id="dpadZone">
-    <div></div><button class="pad" data-d="u">▲</button><div></div>
-    <button class="pad" data-d="l">◀</button><div class="pad c" dir="rtl">לחצו או החליקו לכיוון</div><button class="pad" data-d="r">▶</button>
-    <div></div><button class="pad" data-d="d">▼</button><div></div>
-  </div>
-</section>
-
 <section class="view wantLand" id="soccer">
   <div class="bar"><span class="me"></span><span class="rotate">↻ סובבו את הטלפון לרוחב</span><button class="quit">✕ יציאה</button></div>
   <div class="soc ltr">
     <div class="grp"><button class="pad mv" id="sL">◀</button><button class="pad mv" id="sR">▶</button></div>
     <div class="grp"><button class="pad jump" id="sJump">קפיצה</button><button class="pad kick" id="sKick">בעיטה</button></div>
   </div>
-</section>
-
-<section class="view" id="duel">
-  <div class="bar"><span class="me"></span><button class="quit">✕ יציאה</button></div>
-  <button class="pad" id="duelBtn">אש!</button>
-  <p class="hint">הסתכלו על המסך הגדול · לחצו רק כשמופיע "אש!"</p>
 </section>
 
 <section class="view" id="results">

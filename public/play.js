@@ -10,8 +10,8 @@ const COLORS = ['#ff4d6d', '#2ec5ff'];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 // איזה מסך שלט מתאים לכל משחק
-const VIEW = { menu: 'menu', race: 'race', box: 'box', hockey: 'hockey', tanks: 'stick', sumo: 'stick', tron: 'dpad', soccer: 'soccer', duel: 'duel', results: 'results' };
-const ACT_LABEL = { tanks: 'אש!', sumo: 'הדיפה' };
+const VIEW = { menu: 'menu', race: 'race', box: 'box', hockey: 'hockey', tanks: 'stick', sumo: 'stick', bomb: 'stick', soccer: 'soccer', volley: 'soccer', results: 'results' };
+const ACT_LABEL = { tanks: 'אש!', sumo: 'הדיפה', bomb: 'ספרינט' };
 
 let slot = -1, myName = '', mode = '', joined = false, lastCode = '', autoTry = true;
 
@@ -69,6 +69,7 @@ function applyState(s) {
   if (mode === 'race' && prev !== 'race') { cal = null; setBoost({ v: 0.6 }); }
   if (mode === 'box') setMeter({ v: 0, sta: 100 });
   if (ACT_LABEL[mode]) $('#actBtn').textContent = ACT_LABEL[mode];
+  if (mode === 'soccer' || mode === 'volley') $('#sKick').textContent = mode === 'volley' ? 'הנחתה' : 'בעיטה';
   if (mode === 'results') {
     const t = s.tour, fin = s.final, w = fin ? s.champ : s.w, won = w === slot;
     $('#resEmoji').textContent = won ? '🏆' : w < 0 ? '🤝' : '😤';
@@ -227,31 +228,12 @@ const sUp = (e) => { if (e.pointerId !== sId) return; resetStick(); };
 sZone.addEventListener('pointerup', sUp); sZone.addEventListener('pointercancel', sUp);
 tap($('#actBtn'), () => send({ t: 'act' }));
 
-// ---------- חצים (אופנועי אור) ----------
-$$('#dpadZone [data-d]').forEach((b) => tap(b, () => send({ t: 'dir', d: b.dataset.d })));
-{ // החלקה בכל האזור
-  const z = $('#dpadZone'); let id = null, ox = 0, oy = 0;
-  z.addEventListener('pointerdown', (e) => { id = e.pointerId; ox = e.clientX; oy = e.clientY; });
-  z.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== id) return;
-    const dx = e.clientX - ox, dy = e.clientY - oy;
-    if (Math.hypot(dx, dy) < 34) return;
-    send({ t: 'dir', d: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : dy > 0 ? 'd' : 'u' }); vibe(10);
-    ox = e.clientX; oy = e.clientY;
-  });
-  const up = (e) => { if (e.pointerId === id) id = null; };
-  z.addEventListener('pointerup', up); z.addEventListener('pointercancel', up);
-}
-
 // ---------- כדורגל ----------
 let sl = false, sr = false;
 hold($('#sL'), (v) => (sl = v));
 hold($('#sR'), (v) => (sr = v));
 tap($('#sJump'), () => send({ t: 'jump' }));
 tap($('#sKick'), () => send({ t: 'kick' }));
-
-// ---------- דו־קרב ----------
-tap($('#duelBtn'), () => send({ t: 'act' }));
 
 // ---------- לולאת שליחה ----------
 let lastSent = '';
@@ -260,8 +242,8 @@ setInterval(() => {
   let d = null;
   if (mode === 'race') d = { steer: +steerNow().toFixed(3), gas, brake };
   else if (mode === 'hockey') d = { x: +hx.toFixed(4), y: +hy.toFixed(4), down: hdown };
-  else if (mode === 'tanks' || mode === 'sumo') d = { jx: +jx.toFixed(3), jy: +jy.toFixed(3) };
-  else if (mode === 'soccer') d = { l: sl, r: sr };
+  else if (mode === 'tanks' || mode === 'sumo' || mode === 'bomb') d = { jx: +jx.toFixed(3), jy: +jy.toFixed(3) };
+  else if (mode === 'soccer' || mode === 'volley') d = { l: sl, r: sr };
   if (!d) return;
   const k = JSON.stringify(d);
   if (k === lastSent && Math.random() < 0.8) return;
