@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>זירה · שלט</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--me:#ff4d6d;--bg:#0b0d1c;--card:#161a33;--line:#272c52;--txt:#f2f4ff;--mut:#9aa1c9}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:Rubik,system-ui,sans-serif;overflow:hidden;touch-action:none;overscroll-behavior:none}
+button{font-family:inherit;color:inherit;border:0;cursor:pointer;touch-action:none}
+.view{display:none;position:fixed;inset:0;flex-direction:column;gap:10px;
+  padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+.view.on{display:flex}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;width:100%;max-width:440px;margin:0 auto}
+.logo{font-size:64px;font-weight:900;background:linear-gradient(90deg,#ff4d6d,#2ec5ff);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.sub{color:var(--mut);font-size:16px}
+input{width:100%;font:700 22px Rubik,sans-serif;padding:16px;border-radius:16px;border:2px solid var(--line);background:var(--card);color:var(--txt);text-align:center;user-select:text;-webkit-user-select:text;touch-action:manipulation;outline:none}
+input:focus{border-color:#2ec5ff}
+#code{letter-spacing:12px;font-size:34px;text-transform:uppercase;direction:ltr}
+.btn{width:100%;padding:18px;border-radius:18px;font:900 22px Rubik,sans-serif;background:linear-gradient(90deg,#ff4d6d,#ff8a5c);box-shadow:0 6px 0 #9e1d3a;color:#fff;touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #9e1d3a}
+.btn.ghost{background:var(--card);box-shadow:0 6px 0 #070814;border:2px solid var(--line)}
+.err{color:#ff8fa3;min-height:20px;font-weight:700}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto}
+.me{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:16px;background:var(--card);border:2px solid var(--me);padding:6px 14px;border-radius:99px}
+.me::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--me)}
+.quit{background:var(--card);border:2px solid var(--line);padding:6px 14px;border-radius:99px;font-weight:700;font-size:14px;color:var(--mut)}
+.quit.arm{border-color:#ff4d6d;color:#ff8fa3}
+.games{display:flex;flex-direction:column;gap:12px;width:100%}
+.game{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:18px 20px;border-radius:20px;background:var(--card);border:2px solid var(--line);text-align:right;touch-action:manipulation}
+.game b{font-size:26px;font-weight:900}
+.game span{color:var(--mut);font-size:15px}
+.game:active{border-color:var(--me);transform:scale(.98)}
+.game[data-g=race] b{color:#ffb703}.game[data-g=box] b{color:#ff4d6d}.game[data-g=hockey] b{color:#2ec5ff}
+/* כפתורי משחק */
+.pad{flex:1;border-radius:24px;font-weight:900;font-size:clamp(22px,6.5vmin,44px);color:#fff;background:#1c2142;
+  box-shadow:inset 0 -8px 0 rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .05s,filter .05s}
+.pad small{font-size:.42em;font-weight:600;opacity:.75}
+.pad.on{transform:scale(.96);filter:brightness(1.35);box-shadow:inset 0 -2px 0 rgba(0,0,0,.35)}
+.ltr{direction:ltr}
+/* מרוץ */
+.race{flex:1;display:flex;gap:10px;min-height:0}
+.race .pad{flex:1.1}
+.gas{background:linear-gradient(180deg,#22c55e,#15803d)}
+.brake{background:linear-gradient(180deg,#ef4444,#b91c1c)}
+.mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0}
+#wheel{width:min(30vmin,170px);height:min(30vmin,170px);transition:transform .03s linear}
+.steerBtns{display:none;width:100%;gap:8px;flex:1}
+.steerBtns .pad{background:#2a3060}
+.btnmode #wheel{display:none}.btnmode .steerBtns{display:flex}
+.small{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.small button,.tog{background:var(--card);border:2px solid var(--line);padding:8px 12px;border-radius:12px;font-weight:700;font-size:14px}
+.hint{color:var(--mut);font-size:13px;text-align:center;line-height:1.35}
+/* אגרוף */
+.box{flex:1;display:flex;gap:10px;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;gap:10px}
+.blk{background:linear-gradient(180deg,#5b6ef5,#3343c9)}
+.dg{background:linear-gradient(180deg,#14b8a6,#0f766e);flex:.6}
+.jab{background:linear-gradient(180deg,var(--me),color-mix(in srgb,var(--me) 60%,#000))}
+.hook{background:linear-gradient(180deg,#f97316,#c2410c)}
+.boxBottom{display:flex;gap:10px;align-items:stretch;flex:0 0 auto}
+.super{position:relative;flex:1;border-radius:18px;background:#1c2142;font-weight:900;font-size:22px;overflow:hidden;min-height:56px;border:2px solid var(--line)}
+.super span{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#ffb703,#ffd60a);transition:width .2s}
+.super b{position:relative}
+.super.ready{border-color:#ffd60a;animation:pulse .6s infinite alternate;color:#2a1a00}
+@keyframes pulse{to{transform:scale(1.03)}}
+.sta{position:relative;width:90px;border-radius:14px;background:#1c2142;overflow:hidden;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.sta i{position:absolute;inset:auto 0 0 0;height:100%;background:rgba(107,255,138,.35);transition:height .2s}
+.sta em{position:relative;font-style:normal}
+/* הוקי */
+#pad{flex:1;position:relative;border-radius:24px;background:radial-gradient(circle at 50% 50%,#1e2550,#11142c);border:3px solid var(--me);overflow:hidden;touch-action:none}
+#pad p{position:absolute;inset:auto 0 16px 0;text-align:center;color:var(--mut);font-size:14px;pointer-events:none}
+#pad .lines{position:absolute;inset:0;pointer-events:none;background:
+  linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.08) calc(50% - 1px),rgba(255,255,255,.08) calc(50% + 1px),transparent calc(50% + 1px)),
+  linear-gradient(0deg,transparent calc(50% - 1px),rgba(255,255,255,.08) calc(50% - 1px),rgba(255,255,255,.08) calc(50% + 1px),transparent calc(50% + 1px))}
+#dot{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;background:var(--me);box-shadow:0 0 0 10px color-mix(in srgb,var(--me) 30%,transparent),0 10px 30px rgba(0,0,0,.5);left:50%;top:50%;pointer-events:none;transition:opacity .2s}
+#pad:not(.touch) #dot{opacity:.45}
+/* תוצאות */
+.big{font-size:84px;line-height:1}
+#resTitle{font-size:40px;font-weight:900}
+.rotate{display:none}
+.center{overflow-y:auto}
+@media (max-height:520px){.games{flex-direction:row}.game{flex:1;padding:14px}.game b{font-size:22px}#menu h2{font-size:22px}#menu .center{max-width:760px;gap:10px}.logo{font-size:44px}#join .center{gap:8px}input{padding:10px}#code{font-size:26px}.btn{padding:12px}}
+@media (orientation:portrait){ .wantLand .rotate{display:block;color:#ffd60a;font-size:13px;text-align:center;font-weight:700} }
+</style>
+</head>
+<body>
+
+<section class="view on" id="join">
+  <div class="center">
+    <div class="logo">זירה</div>
+    <p class="sub">הטלפון שלך הוא השלט</p>
+    <input id="code" maxlength="4" placeholder="קוד" autocomplete="off" autocapitalize="characters" inputmode="latin">
+    <input id="name" maxlength="12" placeholder="השם שלך" autocomplete="nickname">
+    <button class="btn" id="joinBtn">הצטרפות למשחק</button>
+    <p class="err" id="err"></p>
+    <p class="sub" style="font-size:13px">את הקוד רואים על המסך הגדול</p>
+  </div>
+</section>
+
+<section class="view" id="menu">
+  <div class="bar"><span class="me"></span></div>
+  <div class="center">
+    <h2 style="font-size:30px;font-weight:900">בחרו משחק</h2>
+    <div class="games">
+      <button class="game" data-g="race"><b>מרוץ</b><span>הטו את הטלפון כמו הגה</span></button>
+      <button class="game" data-g="box"><b>אגרוף</b><span>ג׳אב, הוק, בלוק, נוקאאוט</span></button>
+      <button class="game" data-g="hockey"><b>הוקי אוויר</b><span>גררו את האצבע ותבקיעו</span></button>
+    </div>
+    <p class="sub">כל שחקן יכול לבחור · הסתכלו על המסך הגדול</p>
+  </div>
+</section>
+
+<section class="view wantLand" id="race">
+  <div class="bar"><span class="me"></span><span class="rotate">↻ סובבו את הטלפון לרוחב</span><button class="quit">✕ יציאה</button></div>
+  <div class="race ltr" id="raceWrap">
+    <button class="pad brake" id="brake">בלם</button>
+    <div class="mid">
+      <svg id="wheel" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--me)" stroke-width="9"/>
+        <circle cx="50" cy="50" r="11" fill="var(--me)"/>
+        <path d="M50 50 L12 46 M50 50 L88 46 M50 50 L50 90" stroke="var(--me)" stroke-width="8" stroke-linecap="round"/>
+        <rect x="45" y="4" width="10" height="12" rx="3" fill="#ffd60a"/>
+      </svg>
+      <div class="steerBtns"><button class="pad" id="left">◀</button><button class="pad" id="right">▶</button></div>
+      <div class="small" dir="rtl"><button id="cal">כיול</button><button id="flip">⇄ הפוך</button><button id="smode">כפתורים</button></div>
+      <p class="hint" id="rhint" dir="rtl">החזיקו לרוחב וסובבו כמו הגה</p>
+    </div>
+    <button class="pad gas" id="gas">גז</button>
+  </div>
+</section>
+
+<section class="view wantLand" id="box">
+  <div class="bar"><span class="me"></span><span class="rotate">↻ סובבו את הטלפון לרוחב</span><button class="quit">✕ יציאה</button></div>
+  <div class="box ltr">
+    <div class="col">
+      <button class="pad blk" id="bBlock">בלוק<small>להחזיק</small></button>
+      <button class="pad dg" id="bDodge">התחמקות</button>
+    </div>
+    <div class="col">
+      <button class="pad jab" id="bJab">ג׳אב<small>מהיר</small></button>
+      <button class="pad hook" id="bHook">הוק<small>חזק</small></button>
+    </div>
+  </div>
+  <div class="boxBottom">
+    <div class="sta"><i id="staFill"></i><em>כוח</em></div>
+    <button class="super" id="bSuper"><span id="superFill"></span><b>סופר</b></button>
+    <button class="tog" id="punchMode">אגרוף בתנועה: כבוי</button>
+  </div>
+</section>
+
+<section class="view" id="hockey">
+  <div class="bar"><span class="me"></span><button class="quit">✕ יציאה</button></div>
+  <div id="pad"><div class="lines"></div><div id="dot"></div><p>גררו את האצבע · המחבט שלכם זז על המסך</p></div>
+</section>
+
+<section class="view" id="results">
+  <div class="center">
+    <div class="big" id="resEmoji">🏆</div>
+    <h1 id="resTitle"></h1>
+    <p class="sub" id="resSub">הסתכלו על המסך הגדול</p>
+    <button class="btn" id="again">עוד סיבוב!</button>
+    <button class="btn ghost" id="toMenu">לתפריט המשחקים</button>
+  </div>
+</section>
+
+<section class="view" id="gone">
+  <div class="center">
+    <div class="big">📺</div>
+    <h1 style="font-size:30px">המסך הגדול התנתק</h1>
+    <p class="sub">פתחו מחדש את המסך והצטרפו עם הקוד החדש</p>
+    <button class="btn" onclick="location.href='/play'">הצטרפות מחדש</button>
+  </div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/play.js"></script>
+</body>
+</html>

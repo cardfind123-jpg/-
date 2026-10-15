@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>זירה · המסך הגדול</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#0b0d1c;overflow:hidden}
+  canvas{display:block;width:100vw;height:100vh;cursor:pointer}
+  #fs{position:fixed;bottom:14px;left:14px;font:600 14px Rubik,sans-serif;color:#9aa1c9;background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;cursor:pointer;opacity:.7}
+  #fs:hover{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="fs" title="מסך מלא">⛶ מסך מלא</button>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/screen.js"></script>
+</body>
+</html>
