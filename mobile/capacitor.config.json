@@ -1,0 +1,8 @@
+{
+  "appId": "app.zira.party",
+  "appName": "זירה",
+  "webDir": "www",
+  "backgroundColor": "#0b0d1c",
+  "android": { "allowMixedContent": false },
+  "ios": { "contentInset": "never" }
+}

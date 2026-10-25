@@ -3,17 +3,28 @@
 //  זירה – השלט בטלפון
 // ============================================================
 (() => {
-const socket = io({ transports: ['websocket', 'polling'] });
+const CFG = window.ZIRA_CONFIG || {};
+const SERVER = CFG.server || '';           // באפליקציה: כתובת השרת. בדפדפן: אותו אתר
+const socket = SERVER ? io(SERVER, { transports: ['websocket', 'polling'] }) : io({ transports: ['websocket', 'polling'] });
+const NAT = window.ZiraNative || { isNative: false, canBuy: () => false, entitlement: async () => null, adBreak: async () => {} };
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
-const COLORS = ['#ff4d6d', '#2ec5ff'];
+const COLORS = ['#ff4d6d', '#2ec5ff', '#5eea7a', '#c084fc'];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 // איזה מסך שלט מתאים לכל משחק
-const VIEW = { menu: 'menu', race: 'race', box: 'box', hockey: 'hockey', tanks: 'stick', sumo: 'stick', bomb: 'stick', soccer: 'soccer', volley: 'soccer', results: 'results' };
-const ACT_LABEL = { tanks: 'אש!', sumo: 'הדיפה', bomb: 'ספרינט' };
+const VIEW = { menu: 'menu', race: 'race', box: 'box', hockey: 'hockey', tanks: 'stick', sumo: 'stick', bomb: 'stick', soccer: 'soccer', volley: 'soccer', results: 'results',
+  space: 'stick', collapse: 'stick', paint: 'stick', kitchen: 'stick', heist: 'heist' };
+const ACT_LABEL = { tanks: 'אש!', sumo: 'הדיפה', bomb: 'ספרינט', space: 'לייזר', collapse: 'קפיצה', paint: 'זינוק', kitchen: 'הרם · שים · חתוך' };
+const STICK_MODES = ['tanks', 'sumo', 'bomb', 'space', 'collapse', 'paint', 'kitchen'];
+const PRO_GAMES = ['heist', 'space', 'kitchen', 'collapse', 'paint'];
 
-let slot = -1, myName = '', mode = '', joined = false, lastCode = '', autoTry = true;
+let slot = -1, myName = '', mode = '', joined = false, lastCode = '', autoTry = true, roomPro = false, lastState = null;
+// זכאות פרו שמורה בטלפון: קוד או רכישה (RevenueCat)
+const myPro = () => { const c = store.get('zira-pro-code'); return c ? { code: c } : null; };
+let natEnt = null;
+NAT.entitlement().then((e) => { natEnt = e; refreshPro(); }).catch(() => {});
+const entitlement = () => natEnt || myPro();
 
 // ---------- הצטרפות ----------
 const qs = new URLSearchParams(location.search);
@@ -33,8 +44,9 @@ function join(code, name, silent) {
   $('#err').textContent = '';
   if (code.length !== 4) { if (!silent) $('#err').textContent = 'הקוד הוא 4 אותיות'; return; }
   const token = store.get('zira-tok-' + code) || '';
-  socket.emit('player:join', { code, name, token }, (r) => {
-    if (r.error) { if (!silent) $('#err').textContent = r.error; return; }
+  socket.emit('player:join', { code, name, token, pro: entitlement() }, (r) => {
+    if (r.error) { if (!silent) { $('#err').textContent = r.error; if (r.needPro) { $('#err').insertAdjacentHTML('beforeend', '<br><button class="btn gold" style="margin-top:10px" id="errPro">⭐ לפרטים על זירה פרו</button>'); $('#errPro').onclick = () => openPro('join'); } } return; }
+    roomPro = !!r.roomPro;
     slot = r.slot; myName = r.name; joined = true; lastCode = code;
     store.set('zira-name', name || r.name);
     if (r.token) store.set('zira-tok-' + code, r.token);
@@ -54,27 +66,39 @@ socket.on('connect', () => {
   }
 });
 socket.on('host:gone', () => { joined = false; show('gone'); });
+socket.on('pro', ({ pro }) => { roomPro = !!pro; refreshPro(); });
 socket.on('state', applyState);
 socket.on('to', ({ ev, d }) => {
   if (ev === 'vibe') vibe(d);
   if (ev === 'meter') setMeter(d);
-  if (ev === 'boost') setBoost(d);
+  if (ev === 'boost') { if (mode === 'space') setAct(d.v); else setBoost(d); }
+  if (ev === 'mode' && mode === 'collapse') $('#actLbl').textContent = d.ghost ? 'הפלת אריחים 👻' : 'קפיצה';
+  if (ev === 'clue') setClues(d);
 });
 
 function applyState(s) {
   if (!s) return;
-  const prev = mode; mode = s.mode;
+  const prev = mode; mode = s.mode; lastState = s;
+  if ('pro' in s) { roomPro = !!s.pro; refreshPro(); }
   releaseAll(); resetStick();
+  if (proOpen) return;
+  // צופה במשחק 1 על 1 (מלך הזירה)
+  if (s.seat && !s.seat.includes(slot) && VIEW[mode] && mode !== 'results' && mode !== 'menu') { show('wait'); return; }
   show(VIEW[mode] || 'menu');
+  if (STICK_MODES.includes(mode)) setAct(mode === 'space' ? 0.3 : 0);
+  if (mode === 'heist') renderHeist(s, prev !== 'heist');
   if (mode === 'race' && prev !== 'race') { cal = null; setBoost({ v: 0.6 }); }
   if (mode === 'box') setMeter({ v: 0, sta: 100 });
-  if (ACT_LABEL[mode]) $('#actBtn').textContent = ACT_LABEL[mode];
+  if (ACT_LABEL[mode]) $('#actLbl').textContent = ACT_LABEL[mode];
   if (mode === 'soccer' || mode === 'volley') $('#sKick').textContent = mode === 'volley' ? 'הנחתה' : 'בעיטה';
   if (mode === 'results') {
-    const t = s.tour, fin = s.final, w = fin ? s.champ : s.w, won = w === slot;
-    $('#resEmoji').textContent = won ? '🏆' : w < 0 ? '🤝' : '😤';
-    $('#resTitle').textContent = fin ? (won ? 'אלוף/ת הטורניר!' : w < 0 ? 'תיקו בטורניר!' : 'הטורניר נגמר') : won ? 'ניצחת!' : w < 0 ? 'תיקו!' : 'הפעם לא…';
-    $('#resSub').textContent = t ? `טורניר: ${t.pts[slot]} : ${t.pts[1 - slot]} · משחק ${t.k} מתוך ${t.n}` : won ? 'כל הכבוד, אלוף/ה' : 'בואו נעשה עוד סיבוב';
+    const t = s.tour, fin = s.final, w = fin ? s.champ : s.w, won = w === slot, played = !s.slots || s.slots.includes(slot);
+    const coop = s.coop && !fin;
+    $('#resEmoji').textContent = coop ? (s.ok ? '🏆' : '😅') : won ? '🏆' : !played ? '👏' : w < 0 ? '🤝' : '😤';
+    $('#resTitle').textContent = fin ? (won ? 'אלוף/ת הטורניר!' : w < 0 ? 'תיקו בטורניר!' : 'הטורניר נגמר') : coop ? (s.ok ? 'הצוות ניצח!' : 'כמעט…') : won ? 'ניצחת!' : !played ? 'הסיבוב נגמר' : w < 0 ? 'תיקו!' : 'הפעם לא…';
+    if (t) { const order = t.pts.map((p, i) => [p, i]).filter(([p, i]) => p > 0 || i === slot).sort((a, b) => b[0] - a[0]); const place = order.findIndex(([, i]) => i === slot) + 1; $('#resSub').textContent = `טורניר: ${t.pts[slot]} נק׳ · מקום ${place} · משחק ${t.k} מתוך ${t.n}`; }
+    else $('#resSub').textContent = coop ? 'שחקו שוב ותשברו את השיא' : won ? 'כל הכבוד, אלוף/ה' : 'בואו נעשה עוד סיבוב';
+    if (!roomPro && prev !== 'results') NAT.adBreak();
     $('#again').style.display = t ? 'none' : '';
     $('#toMenu').textContent = t && !fin ? `למשחק הבא: ${s.next}` : 'לתפריט המשחקים';
   }
@@ -107,7 +131,11 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
 // תפריט ותוצאות
-$$('.game, .tourBtn').forEach((b) => b.addEventListener('click', () => { vibe(15); send({ t: 'menu', g: b.dataset.g }); }));
+$$('.game, .tourBtn').forEach((b) => b.addEventListener('click', () => {
+  vibe(15);
+  if (PRO_GAMES.includes(b.dataset.g) && !roomPro) { openPro('menu'); return; }
+  send({ t: 'menu', g: b.dataset.g });
+}));
 $('#again').addEventListener('click', () => send({ t: 'again' }));
 $('#toMenu').addEventListener('click', () => send({ t: 'next' }));
 $$('.quit').forEach((q) => {
@@ -242,7 +270,7 @@ setInterval(() => {
   let d = null;
   if (mode === 'race') d = { steer: +steerNow().toFixed(3), gas, brake };
   else if (mode === 'hockey') d = { x: +hx.toFixed(4), y: +hy.toFixed(4), down: hdown };
-  else if (mode === 'tanks' || mode === 'sumo' || mode === 'bomb') d = { jx: +jx.toFixed(3), jy: +jy.toFixed(3) };
+  else if (STICK_MODES.includes(mode)) d = { jx: +jx.toFixed(3), jy: +jy.toFixed(3) };
   else if (mode === 'soccer' || mode === 'volley') d = { l: sl, r: sr };
   if (!d) return;
   const k = JSON.stringify(d);
@@ -254,4 +282,79 @@ setInterval(() => {
   if (mode === 'race' && !btnMode) $('#wheel').style.transform = `rotate(${steerNow() * 100}deg)`;
   requestAnimationFrame(wheelLoop);
 })();
+
+// ---------- כפתור פעולה עם מד (לייזר) ----------
+function setAct(v) { $('#actFill').style.height = (mode === 'space' ? clamp(v, 0, 1) * 100 : 0) + '%'; $('#actBtn').classList.toggle('ready', mode === 'space' && v >= 1); }
+
+// ---------- שוד הכספת ----------
+let hSel = 0, hVault = 0;
+function setClues({ v, list }) {
+  hVault = v;
+  $('#clueList').innerHTML = '';
+  (list || []).forEach((c) => { const li = document.createElement('li'); li.textContent = c; $('#clueList').appendChild(li); });
+  if (!list || !list.length) $('#clueList').innerHTML = '<li>אין לכם רמז הפעם – תקשיבו לאחרים!</li>';
+  vibe([40, 40, 40]);
+}
+function renderHeist(s, fresh) {
+  if (fresh) $('#clueList').innerHTML = '<li>ממתינים לכספת…</li>';
+  $('#hVault').textContent = s.vault ? `כספת ${s.vault}/${s.n}` : '';
+  const box = $('#wires'); box.innerHTML = '';
+  if (s.vault !== hVault) hSel = 0;
+  (s.wires || []).forEach((w, k) => {
+    const i = k + 1, b = document.createElement('button');
+    b.className = 'wire' + (s.cut && s.cut[k] ? ' cut' : '') + (hSel === i ? ' sel' : '');
+    b.style.setProperty('--wc', w.c); b.style.background = 'rgba(255,255,255,.06)';
+    b.innerHTML = `<i></i><em>${i}</em>`; b.setAttribute('aria-label', `חוט ${i} ${w.n}`);
+    b.addEventListener('click', () => { if (s.cut && s.cut[k]) return; hSel = i; vibe(10); renderHeist(lastState, false); });
+    box.appendChild(b);
+  });
+  $('#cutRow').classList.toggle('on', hSel > 0 && !s.over);
+  if (hSel) $('#cutYes').textContent = `✂ חותכים את חוט ${hSel} (${s.wires[hSel - 1].n})`;
+}
+$('#cutYes').addEventListener('click', () => { if (!hSel) return; send({ t: 'cut', i: hSel }); vibe(60); hSel = 0; $('#cutRow').classList.remove('on'); });
+$('#cutNo').addEventListener('click', () => { hSel = 0; if (lastState) renderHeist(lastState, false); });
+
+// ---------- זירה פרו ----------
+let proOpen = false, proFrom = '';
+function hasPro() { return !!entitlement(); }
+function refreshPro() {
+  document.body.classList.toggle('isPro', roomPro || hasPro());
+  $('#menu').classList.toggle('locked', !roomPro);
+  $('#proStatus').textContent = hasPro() ? '✓ יש לך זירה פרו' : roomPro ? '✓ החדר הזה כבר בפרו (שחקן אחר קנה)' : '';
+  $('#buyBtn').style.display = NAT.canBuy() && !hasPro() ? '' : 'none';
+  $('#restoreBtn').style.display = NAT.isNative ? '' : 'none';
+  $('#webNote').style.display = NAT.canBuy() ? 'none' : '';
+}
+function openPro(from) {
+  proOpen = true; proFrom = from; $('#proErr').textContent = ''; refreshPro(); show('pro');
+  if (NAT.canBuy()) NAT.price().then((p) => { if (p) $('#buyBtn').textContent = `קנייה חד־פעמית · ${p}`; });
+}
+function closePro() { proOpen = false; if (joined && lastState) applyState(lastState); else show('join'); }
+$('#proOpen').addEventListener('click', () => openPro('menu'));
+$('#proClose').addEventListener('click', closePro);
+async function activated(ent) {
+  $('#proErr').textContent = ''; vibe([60, 40, 120]); refreshPro();
+  if (joined) socket.emit('player:pro', ent, () => {});
+  else if (proFrom === 'join') { closePro(); $('#joinBtn').click(); return; }
+  $('#proStatus').textContent = '🎉 זירה פרו הופעל!';
+  setTimeout(closePro, 1200);
+}
+$('#buyBtn').addEventListener('click', async () => {
+  $('#proErr').textContent = '';
+  try { const e = await NAT.buy(); if (e) { natEnt = e; activated(e); } } catch (err) { $('#proErr').textContent = (err && err.message) || 'הרכישה נכשלה'; }
+});
+$('#restoreBtn').addEventListener('click', async () => {
+  const e = await NAT.restore();
+  if (e) { natEnt = e; activated(e); } else $('#proErr').textContent = 'לא נמצאה רכישה קודמת בחשבון הזה';
+});
+$('#codeBtn').addEventListener('click', async () => {
+  const code = $('#proCode').value.trim().toUpperCase();
+  if (!code) return;
+  try {
+    const r = await fetch((SERVER || '') + '/api/redeem', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }).then((x) => x.json());
+    if (!r.ok) { $('#proErr').textContent = 'הקוד לא תקין'; return; }
+    store.set('zira-pro-code', code); activated({ code });
+  } catch (e) { $('#proErr').textContent = 'אין חיבור לשרת'; }
+});
+refreshPro();
 })();

@@ -1,0 +1,20 @@
+# הגדרת Render (Blueprint). אפשר גם להגדיר ידנית ב-Environment.
+services:
+  - type: web
+    name: zira
+    runtime: node
+    plan: free            # לשרת שלא נרדם: starter (~$7 לחודש)
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PRO_SECRET          # סוד לחתימת קודי פרו (נוצר אוטומטית)
+        generateValue: true
+      - key: STATS_KEY           # מפתח לצפייה בסטטיסטיקה: /api/stats?key=...
+        generateValue: true
+      - key: SELF_URL            # כתובת השרת – מונע ממנו להירדם בחינם
+        sync: false
+      - key: PROMO_CODES         # קודי מבצע קבועים, מופרדים בפסיקים
+        sync: false
+      - key: REVENUECAT_SECRET   # מפתח סודי של RevenueCat (sk_...) לאימות רכישות
+        sync: false

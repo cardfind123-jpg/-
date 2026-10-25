@@ -1,0 +1,21 @@
+{
+  "name": "zira-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "זירה – אפליקציית השלט ל-App Store ול-Google Play (Capacitor)",
+  "scripts": {
+    "www": "node build-www.js",
+    "android": "node build-www.js && npx cap sync android && npx cap open android",
+    "ios": "node build-www.js && npx cap sync ios && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.2.1",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@revenuecat/purchases-capacitor": "^13.7.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}
