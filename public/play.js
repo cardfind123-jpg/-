@@ -331,6 +331,7 @@ function openPro(from) {
 }
 function closePro() { proOpen = false; if (joined && lastState) applyState(lastState); else show('join'); }
 $('#proOpen').addEventListener('click', () => openPro('menu'));
+$('#proJoin').addEventListener('click', () => openPro('join'));
 $('#proClose').addEventListener('click', closePro);
 async function activated(ent) {
   $('#proErr').textContent = ''; vibe([60, 40, 120]); refreshPro();
