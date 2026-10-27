@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "זירה",
+    "slug": "zira",
+    "scheme": "zira",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0d1c",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0d1c"
+    },
+    "ios": {
+      "bundleIdentifier": "app.zira.party",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSMotionUsageDescription": "זירה משתמשת בהטיית הטלפון כדי לנהוג ולשלוט במשחקים",
+        "NSUserTrackingUsageDescription": "כדי להציג פרסומות מתאימות יותר בגרסה החינמית",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.zira.party",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0d1c",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["com.android.vending.BILLING"]
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      "expo-build-properties"
+    ]
+  }
+}

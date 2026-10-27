@@ -5,6 +5,8 @@
 //  המפתחות מגיעים מ-config.js של האפליקציה (window.ZIRA_CONFIG).
 // ============================================================
 (() => {
+// באפליקציית Expo (zira-app) הגשר כבר הוזרק מבחוץ – לא דורסים אותו
+if (window.ZiraNative && window.ZiraNative.__expo) return;
 const CFG = window.ZIRA_CONFIG || {};
 const cap = window.Capacitor;
 const isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform());

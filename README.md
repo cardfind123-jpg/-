@@ -14,7 +14,8 @@
 | `public/screen.js` | המסך הגדול וכל 13 המשחקים |
 | `public/play.html`, `play.js` | השלט בטלפון |
 | `public/native.js` | גשר לאפליקציה: רכישות (RevenueCat) ופרסומות (AdMob). בדפדפן לא עושה כלום |
-| `mobile/` | פרויקט האפליקציה ל-App Store ול-Google Play (Capacitor) |
+| `zira-app/` | **אפליקציית השלט ב-Expo** – נבנית בענן לאייפון ולאנדרואיד, בלי Mac (ראו `zira-app/README.md`) |
+| `mobile/` | הגרסה הישנה של האפליקציה (Capacitor, דורשת Mac לאייפון) |
 | `docs/store-listing.md` | טקסטים מוכנים לדף החנות |
 | `tools/make-codes.js` | יוצר קודי פרו למכירה / מתנה |
 
